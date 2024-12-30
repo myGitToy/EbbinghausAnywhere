@@ -1,0 +1,155 @@
+<div class="container py-0">
+    <div class="card shadow border-0">
+        <div class="card-header text-center bg-primary text-white">
+            <h5 class="mb-0">{{ reviewdate }} - Review Items</h5>
+        </div>
+        <div class="card-body p-0">
+            {% for key, value in output.items %}
+            <table class="table table-bordered table-hover mb-4">
+                <thead class="table-info">
+                    <tr>
+                        <th style="width: 50%;">{{ key }} ({{ value | length }})</th>
+                        <th style="width: 25%;">Review Cycle</th>
+                        <th style="width: 25%;">Mastery</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for word in value %}
+                    <tr id="td{{ word.1.id }}" data-bs-toggle="modal" data-bs-target="#myModal{{ word.1.id }}">
+                        <td>{{ word.1.item }}</td>
+                        <td>Day {{ word.0 }}</td>
+                        <td class="proficiency-cell">{{ word.1.get_proficiency_display }}</td>
+                    </tr>
+  
+                    <!-- Modal -->
+                    <div class="modal fade" id="myModal{{ word.1.id }}" tabindex="-1" aria-labelledby="myModalLabel{{ word.1.id }}" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="myModalLabel{{ word.1.id }}">
+                                        <a href="/admin/EAW/item/{{ word.1.id }}/change/">{{ word.1.item }}</a>
+                                    </h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <p><strong>Mastery:</strong> {{ word.1.get_proficiency_display }}</p>
+                                    <p><strong>Category:</strong> {{ word.1.category.name }}</p>
+                                    <p><strong>Input Date:</strong> {{ word.1.inputDate }}</p>
+                                    {% if word.1.category.name == "单词" %}
+                                        {% if word.1.us_phonetic %}
+                                            <p><strong>US Phonetic:</strong> {{ word.1.us_phonetic }}</p>
+                                        {% endif %}
+                                        {% if word.1.uk_phonetic %}
+                                            <p><strong>UK Phonetic:</strong> {{ word.1.uk_phonetic }}</p>
+                                        {% endif %}
+                                        {% if word.1.src_tts %}
+                                            <p><strong>Pronunciation:</strong></p>
+                                            <audio controls>
+                                                <source src="{{ word.1.src_tts }}" type="audio/mpeg">
+                                                Your browser does not support audio playback.
+                                            </audio>
+                                        {% endif %}
+                                    {% endif %}
+                                    {% autoescape off %}
+                                    <p style="white-space: pre-line"><strong>Content:</strong><br>{{ word.1.content|safe }}</p>
+                                    {% endautoescape %}
+                                </div>
+                                <div class="modal-footer">
+                                    <button class="btn btn-success feedback-btn" data-id="{{ word.1.id }}" data-action="yes">YES</button>
+                                    <button class="btn btn-danger feedback-btn" data-id="{{ word.1.id }}" data-action="no">NO</button>
+                                    <button class="btn btn-warning feedback-btn" data-id="{{ word.1.id }}" data-action="reset">RESET</button>
+                                    <button type="button" class="btn btn-dark" data-bs-dismiss="modal">Close</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endfor %}
+          </div>
+        </div>
+  </div>
+
+  <script>
+    console.log('Script Loaded');  // 检查脚本是否加载成功
+    const feedbackUrls = {
+      yes: '/review-feedback/yes/',
+      no: '/review-feedback/no/',
+      reset: '/review-feedback/reset/',
+    };
+  
+    // 通用函数：POST 数据到后端
+    function postData(url, data, callback) {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", url, true);
+      xhr.setRequestHeader("X-CSRFToken", '{{ csrf_token }}');
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState === 4 && xhr.status === 200) {
+          const response = JSON.parse(xhr.responseText);
+          callback(response);
+        }
+      };
+      xhr.send(data);
+    }
+  
+    // 更新整行文字样式
+    function updateRowStyle(row, action, mastery) {
+      // 移除整行文字的旧样式
+      row.querySelectorAll('td').forEach(cell => {
+        cell.classList.remove('text-success', 'text-danger', 'text-warning', 'fw-bold');
+      });
+  
+      // 更新掌握程度文字
+      const proficiencyCell = row.querySelector('.proficiency-cell');
+      proficiencyCell.textContent = mastery;
+  
+      // 根据操作更新整行文字样式
+      const cells = row.querySelectorAll('td');
+      if (action === 'yes') {
+        cells.forEach(cell => cell.classList.add('text-success')); // 文字变绿色
+      } else if (action === 'no') {
+        cells.forEach(cell => {
+          cell.classList.add('text-danger', 'fw-bold'); // 文字变红且加粗
+        });
+      } else if (action === 'reset') {
+        cells.forEach(cell => {
+          cell.classList.add('text-warning', 'fw-bold'); // 文字变黄色且加粗
+        });
+      }
+    }
+  
+    // 通用函数：处理按钮点击事件
+    function handleButtonClick(event) {
+      const button = event.target;
+      const wordId = button.getAttribute('data-id');
+      const action = button.getAttribute('data-action');
+      const row = document.getElementById(`td${wordId}`);
+      const data = JSON.stringify({ id: wordId, date: '{{ reviewdate }}' });
+  
+      // 调试：检查按钮点击事件是否触发
+      // console.log(`Button clicked: ${action} for word ID: ${wordId}`);
+  
+      // 发送请求到后端
+      postData(feedbackUrls[action], data, (response) => {
+        if (response.success) {
+          updateRowStyle(row, action, response.mastery); // 更新整行样式和掌握程度
+        } else {
+          // console.error("Error:", response.message);
+          alert("操作失败：" + response.message); // 提示错误
+        }
+      });
+    }
+  
+    // 等 DOM 加载完成后绑定事件
+    document.addEventListener('DOMContentLoaded', function () {
+      // console.log('DOM fully loaded and parsed');
+      
+      document.querySelectorAll('.feedback-btn').forEach(button => {
+        button.addEventListener('click', handleButtonClick);
+        
+        // 调试：检查按钮是否存在并绑定事件
+        // console.log(`Button with ID ${button.getAttribute('data-id')} bound to event`);
+      });
+    });
+  </script>

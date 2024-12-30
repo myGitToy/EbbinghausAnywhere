@@ -1,0 +1,190 @@
+{% extends 'base_generic.html' %}
+{% load static %}
+{% block content %}
+<!-- Header with Background Image -->
+<div class="bg-container">
+    <div class="container text-center text-white">
+        <!-- 可以根据需要取消下面的注释来显示标题 -->
+        <!-- <h1 class="display-4 fw-bold bg-title">Review Home</h1> -->
+    </div>
+</div>
+
+<style>
+/* 背景容器样式 */
+.bg-container {
+    background-image: url('{% static "img/banner-callout.jpg" %}');
+    background-size: cover;
+    background-position: center;
+    height: auto;
+    aspect-ratio: 2560 / 80;
+    width: 100%;
+    position: relative;
+}
+
+/* 标题样式 */
+.bg-title {
+    margin-top: 0;
+    text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.7);
+    font-size: clamp(1.5rem, 5vw, 3rem);
+    line-height: 1.2;
+}
+</style>
+
+<!-- Review Form Section -->
+<section id="review-home" class="py-5" style="background-color: #f8f9fa;">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-12 col-md-8">
+                <!-- Card for the header with blue background -->
+                <div class="card mb-4 shadow border-0">
+                    <div class="card-header text-center bg-primary text-white">
+                        <h5 class="mb-0">Select a Date for Review</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="reviewForm" action="" method="post" enctype="multipart/form-data" autocomplete="off" onsubmit="return loadReviewContent();">
+                            {% csrf_token %}
+                            <div class="input-group">
+                                <input type="text" id="id_review_date" name="review_date" class="form-control" placeholder="YYYY-MM-DD">
+                                <button type="submit" class="btn btn-primary">Review</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Card for the review content -->
+                <!-- <div class="card shadow border-0"> -->
+                    <!-- <div class="card-body"> -->
+                        <div id="reviewContent" class="mt-4" style="display: none;"></div>
+                    <!-- </div> -->
+                <!-- </div> -->
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Flatpickr -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script>
+    // 使用 window.onload 确保页面完全加载后再执行代码
+    window.onload = function() {
+        // 获取当天日期并格式化为 YYYY-MM-DD
+        const today = new Date().toISOString().split('T')[0];
+
+        // 确保在页面加载后输出当前日期
+        console.log("当前日期为：", today); // 控制台日志确认
+
+        // 初始化 Flatpickr
+        flatpickr("#id_review_date", {
+            dateFormat: "Y-m-d",      // 设置日期格式
+            defaultDate: today        // 将当天日期设置为默认值
+        });
+    };
+
+    // 更新行样式的函数
+    function updateRowStyle(row, action, mastery) {
+        // 移除整行文字的旧样式
+        row.querySelectorAll('td').forEach(cell => {
+            cell.classList.remove('text-success', 'text-danger', 'text-warning', 'fw-bold');
+        });
+
+        // 更新掌握程度文字
+        const proficiencyCell = row.querySelector('.proficiency-cell');
+        proficiencyCell.textContent = mastery;
+
+        // 根据操作更新整行文字样式
+        const cells = row.querySelectorAll('td');
+        if (action === 'yes') {
+            cells.forEach(cell => cell.classList.add('text-success')); // 文字变绿色
+        } else if (action === 'no') {
+            cells.forEach(cell => {
+                cell.classList.add('text-danger', 'fw-bold'); // 文字变红且加粗
+            });
+        } else if (action === 'reset') {
+            cells.forEach(cell => {
+                cell.classList.add('text-danger', 'fw-bold'); // 文字变黄色且加粗
+            });
+        }
+    }
+
+    // 动态加载复习内容
+    function loadReviewContent() {
+        const reviewDate = document.getElementById("id_review_date").value;
+
+        // 检查日期是否有效
+        if (!reviewDate) {
+            alert("请选择一个有效的日期！");
+            return false; // 阻止表单提交
+        }
+
+        // 发起 AJAX 请求加载复习内容
+        const url = `/review/${reviewDate}`;
+        fetch(url, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            if (response.ok) return response.text();
+            throw new Error('加载复习内容失败');
+        })
+        .then(html => {
+            const reviewContentDiv = document.getElementById('reviewContent');
+            reviewContentDiv.innerHTML = html;
+            reviewContentDiv.style.display = 'block';
+
+            // 重新绑定动态内容中的事件
+            bindReviewDayEvents();  // 确保绑定按钮事件
+
+            // 手动触发 MathJax 渲染
+            if (window.MathJax) {
+                MathJax.typeset(); // 渲染数学公式
+            }
+        })
+        .catch(error => {
+            console.error(error);
+            alert('加载失败，请稍后重试');
+        });
+
+        return false; // 阻止默认表单提交
+    }
+
+    // 绑定 review_day.html 中的事件
+    function bindReviewDayEvents() {
+        console.log("Binding events for feedback buttons...");
+        
+        // 绑定按钮点击事件
+        document.querySelectorAll('.feedback-btn').forEach(button => {
+            button.addEventListener('click', function (event) {
+                const button = event.target;
+                const wordId = button.getAttribute('data-id');
+                const action = button.getAttribute('data-action');
+                const row = document.getElementById(`td${wordId}`);
+                const data = JSON.stringify({ id: wordId, date: '{{ reviewdate }}' });
+
+                // 通用 POST 请求处理
+                fetch(`/review-feedback/${action}/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}',
+                    },
+                    body: data,
+                })
+                .then(response => response.json())
+                .then(response => {
+                    if (response.success) {
+                        updateRowStyle(row, action, response.mastery);  // 调用 updateRowStyle
+                    } else {
+                        alert("操作失败：" + response.message);
+                    }
+                })
+                .catch(error => {
+                    console.error("Error:", error);
+                });
+            });
+        });
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,149 @@
+{% extends 'base_generic.html' %}
+{% load static %}
+{% block content %}
+<header class="d-flex justify-content-center align-items-center" style="background-image: url('{% static 'img/bg-callout.jpg' %}'); height: 100vh; background-size: cover; background-position: center;">
+    <div class="container mt-5">
+        <div class="card p-4 mx-auto text-light" style="width: 100%; max-width: 400px; background-color: rgba(0, 0, 0, 0.9); border-radius: 10px;">
+            <h2 class="text-center mb-4">User Information Management</h2>
+
+            <!-- Feedback Messages -->
+            {% if messages %}
+                <div class="mb-3">
+                    {% for message in messages %}
+                        <div class="alert alert-success" role="alert">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <!-- Update Email Form -->
+            <form method="POST" action="" autocomplete="off" class="mb-4">
+                {% csrf_token %}
+                <h5>Change Email</h5>
+                <div class="mb-3">
+                    <input
+                        type="email"
+                        name="email"
+                        placeholder="Current: {{ user.email }}"
+                        class="form-control"
+                        required
+                    >
+                </div>
+                <div class="mb-3">
+                    <input
+                        type="password"
+                        name="current_password"
+                        placeholder="Enter current password"
+                        class="form-control"
+                        required
+                    >
+                </div>
+                <button type="submit" name="update_email" class="btn btn-primary w-100 mt-3">Update Email</button>
+            </form>
+
+            <!-- Update Name Form -->
+            <form method="POST" action="" autocomplete="off" class="mb-4">
+                {% csrf_token %}
+                <h5>Update Profile</h5>
+                <div class="mb-3">
+                    <input
+                        type="text"
+                        name="first_name"
+                        placeholder="Current: {{ user.first_name }}"
+                        class="form-control"
+                    >
+                </div>
+                <div class="mb-3">
+                    <input
+                        type="text"
+                        name="last_name"
+                        placeholder="Current: {{ user.last_name }}"
+                        class="form-control"
+                    >
+                </div>
+                <button type="submit" name="update_profile" class="btn btn-primary w-100 mt-3">Update Profile</button>
+            </form>
+
+            <!-- Update Password Form -->
+            <form method="POST" action="" autocomplete="off" class="mb-4">
+                {% csrf_token %}
+                <h5>Change Password</h5>
+                <div class="input-group mb-3">
+                    <input
+                        type="password"
+                        name="old_password"
+                        placeholder="Current Password"
+                        class="form-control"
+                        id="old-password"
+                        required
+                    >
+                    <button
+                        type="button"
+                        class="btn btn-secondary"
+                        data-bs-toggle="tooltip"
+                        data-bs-placement="right"
+                        title="Enter your current password to validate the change."
+                    >
+                        ?
+                    </button>
+                </div>
+                <div class="input-group mb-3">
+                    <input
+                        type="password"
+                        name="new_password1"
+                        placeholder="New Password"
+                        class="form-control"
+                        id="new-password1"
+                        required
+                    >
+                    <button
+                        type="button"
+                        class="btn btn-secondary"
+                        data-bs-toggle="tooltip"
+                        data-bs-placement="right"
+                        title="Password must be at least 8 characters, contain one uppercase letter, one lowercase letter, and one number."
+                    >
+                        ?
+                    </button>
+                </div>
+                <div class="input-group">
+                    <input
+                        type="password"
+                        name="new_password2"
+                        placeholder="Confirm New Password"
+                        class="form-control"
+                        id="new-password2"
+                        required
+                    >
+                    <button
+                        type="button"
+                        class="btn btn-secondary"
+                        data-bs-toggle="tooltip"
+                        data-bs-placement="right"
+                        title="Re-enter the new password to confirm."
+                    >
+                        ?
+                    </button>
+                </div>
+                <button type="submit" name="change_password" class="btn btn-primary w-100 mt-3">Update Password</button>
+            </form>
+
+            <!-- Import & Export -->
+            <div class="d-flex justify-content-between">
+                <a href="{% url 'export_user_data' %}" class="btn btn-success me-2 flex-grow-1">Export Data</a>
+                <a href="{% url 'import_user_data' %}" class="btn btn-warning flex-grow-1">Import Data</a>
+            </div>
+        </div>
+    </div>
+</header>
+<script>
+    // Bootstrap Tooltip Initialization
+    document.addEventListener('DOMContentLoaded', function () {
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    });
+</script>
+{% endblock %}

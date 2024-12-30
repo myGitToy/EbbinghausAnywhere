@@ -1,0 +1,99 @@
+{% extends 'base_generic.html' %}
+{% load static %}
+
+{% block content %}
+<!-- Header with Background Image -->
+<div class="bg-container">
+    <div class="container text-center text-white">
+        <!-- <h1 class="display-4 fw-bold bg-title">Search Items</h1> -->
+    </div>
+</div>
+
+<style>
+/* 背景容器样式 */
+.bg-container {
+    background-image: url('{% static "img/banner-callout.jpg" %}');
+    background-size: cover;
+    background-position: center;
+    height: auto;
+    aspect-ratio: 2560 / 80;
+    width: 100%;
+    position: relative;
+}
+
+/* 标题样式 */
+.bg-title {
+    margin-top: 0;
+    text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.7);
+    font-size: clamp(1.5rem, 5vw, 3rem);
+    line-height: 1.2;
+}
+</style>
+
+<!-- Search Form Section -->
+<section id="search-home" class="py-5" style="background-color: #f8f9fa;">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-12 col-md-8">
+                <!-- Card for the search form -->
+                <div class="card mb-4 shadow border-0">
+                    <div class="card-header text-center bg-primary text-white">
+                        <h5 class="mb-0">Search for Items</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="searchForm" method="get" action="{% url 'search' %}" onsubmit="return loadSearchResults();">
+                            {% csrf_token %}
+                            <div class="input-group">
+                                <input type="text" id="searchInput" name="q" class="form-control" placeholder="Enter keyword" required>
+                                <button type="submit" class="btn btn-primary">Search</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Search Results -->
+                <div id="searchResults" class="mt-4" style="display: none;">
+                    <!-- Results will be dynamically loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script>
+    // Handle search form submission
+    function loadSearchResults() {
+        const query = document.getElementById("searchInput").value;
+        
+        if (!query) {
+            alert("Please enter a keyword!");
+            return false;
+        }
+
+        // Make AJAX request to get search results
+        fetch(`/search/?q=${query}`, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            const resultsDiv = document.getElementById('searchResults');
+            if (data.html) {
+                resultsDiv.innerHTML = data.html;
+                resultsDiv.style.display = 'block';  // Show the results
+            } else {
+                alert('Failed to load results. Please try again.');
+            }
+        })
+        .catch(error => {
+            console.error(error);
+            alert('Failed to load results. Please try again.');
+        });
+
+        return false;  // Prevent form submission
+    }
+</script>
+
+{% endblock %}

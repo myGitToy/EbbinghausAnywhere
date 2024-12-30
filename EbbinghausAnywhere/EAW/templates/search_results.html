@@ -1,0 +1,31 @@
+{% if word %}
+    <div class="alert alert-info text-center">{{ word }}</div>
+{% endif %}
+
+{% if query %}
+    <!-- Responsive Table for Search Results -->
+    <div class="table-responsive">
+        <table class="table table-bordered table-striped align-middle">
+            <thead class="table-primary">
+                <tr>
+                    <th scope="col">Item</th>
+                    <th scope="col">Category</th>
+                    <th scope="col">Input Date</th>
+                    <th scope="col">Proficiency</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in query %}
+                    <tr>
+                        <td><a href="{% url 'item-detail' item.id %}" class="text-primary">{{ item.item }}</a></td>
+                        <td>{{ item.category.name }}</td>
+                        <td>{{ item.inputDate }}</td>
+                        <td>{{ item.get_proficiency_display }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% else %}
+    <div class="alert alert-warning text-center">No results found for your search query.</div>
+{% endif %}

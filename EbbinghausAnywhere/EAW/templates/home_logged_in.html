@@ -1,0 +1,47 @@
+{% extends "base_generic.html" %}
+{% load static %}
+{% block content %}
+<header class="d-flex masthead m-0 py-2 align-items-center" 
+        style="background-image: url('{% static 'img/bg-masthead.jpg' %}'); height: 50vh;"> 
+    <div class="container text-center">
+        <h2 class="mx-auto mb-3" style="font-size: 4vw; line-height: 1.2;">
+            <span>Welcome to&nbsp;</span><em>{{ display_name }}'s</em><br>Ebbinghaus Anywhere!
+        </h2>
+        <p class="text-center" style="font-size: 2vw; line-height: 1.5;">
+            {{ display_name }} has learned <strong>{{ total_items }}</strong> items in the <strong>{{ days_since_first_item }}</strong> days spent with Ebbinghaus Anywhere
+        </p>
+    </div>
+</header>
+
+<section id="services" class="content-section bg-primary text-white text-center py-3" style="min-height: 40vh;">
+    <div class="container">
+        <div class="content-section-heading">
+            <h2 class="mb-4" style="font-size: 3vw;">What We Can Do</h2>
+        </div>
+        <div class="row">
+            <div class="col-6 col-md-3 mb-4">
+                <a class="mx-auto service-icon rounded-circle mb-3" href="{% url 'item-list' %}"><i class="icon-notebook"></i></a>
+                <h4 style="font-size: 1.8vw;"><strong>All Items</strong></h4>
+                <p class="mb-0 text-faded" style="font-size: 1vw;">Your knowledge at a glance—review everything you've learned, one step at a time.</p>
+            </div>
+            <div class="col-6 col-md-3 mb-4">
+                <a class="mx-auto service-icon rounded-circle mb-3" href="{% url 'input-view' %}"><i class="icon-pencil"></i></a>
+                <h4 style="font-size: 1.8vw;"><strong>Input</strong></h4>
+                <p class="mb-0 text-faded" style="font-size: 1vw;">Add new bricks to your learning journey and build your own tower of knowledge.</p>
+            </div>
+            <div class="col-6 col-md-3 mb-4">
+                <a class="mx-auto service-icon rounded-circle mb-3" href="{% url 'review-home' %}"><i class="icon-calendar"></i></a>
+                <h4 style="font-size: 1.8vw;"><strong>Daily Review</strong></h4>
+                <p class="mb-0 text-faded" style="font-size: 1vw;">
+                    Small, consistent steps—master your knowledge, one day at a time.
+                </p>
+            </div>
+            <div class="col-6 col-md-3 mb-4">
+                <a class="mx-auto service-icon rounded-circle mb-3" href="{% url 'search' %}"><i class="icon-magnifier"></i></a>
+                <h4 style="font-size: 1.8vw;"><strong>Search</strong></h4>
+                <p class="mb-0 text-faded" style="font-size: 1vw;">Find the wisdom you've gained—search your learning and rediscover insights.</p>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

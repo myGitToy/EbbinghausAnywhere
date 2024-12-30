@@ -1,0 +1,143 @@
+{% load static %}
+<!DOCTYPE html>
+<html data-bs-theme="light" lang="en">
+<head>
+    {% block title %}<title>Ebbinghaus Anywhere</title>{% endblock %}
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- 引入 Bootstrap CSS -->
+    <link rel="stylesheet" href="{% static 'bootstrap/css/bootstrap.min.css' %}">
+    <!-- 引入自定义 CSS -->
+    <link rel="stylesheet" href="{% static 'css/Source%20Sans%20Pro.css' %}">
+    <link rel="stylesheet" href="{% static 'fonts/font-awesome.min.css' %}">
+    <link rel="stylesheet" href="{% static 'fonts/simple-line-icons.min.css' %}">
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+
+    <!-- MathJax 配置 -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                packages: { '[+]': ['mhchem', 'extpfeil'] }
+            },
+            loader: {
+                load: ['[tex]/mhchem', '[tex]/extpfeil']
+            },
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script> 
+
+    <!-- 引入 Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+</head>
+<body id="page-top" class="m-0 p-0">
+
+    <a class="menu-toggle rounded" href="#"><i class="fa fa-bars"></i></a>
+    <nav class="navbar navbar-expand navbar-light" id="sidebar-wrapper">
+        <div class="container">
+            <button data-bs-toggle="collapse" class="navbar-toggler d-none" data-bs-target="#sidebar-nav"></button>
+            <div class="collapse navbar-collapse">
+                <ul class="navbar-nav sidebar-nav" id="sidebar-nav">
+                    <li class="nav-item sidebar-brand">
+                        <a class="nav-link active js-scroll-trigger" href="{% url 'home' %}">Ebbinghaus Anywhere</a>
+                    </li>
+                    
+                    {% if user.is_authenticated %}
+                    <!-- 用户已登录时的导航 -->
+                    <li class="nav-item sidebar-nav-item">
+                        <a class="nav-link js-scroll-trigger" href="{% url 'item-list' %}">All Items</a>
+                    </li>
+                    <li class="nav-item sidebar-nav-item">
+                        <a class="nav-link js-scroll-trigger" href="{% url 'review-home' %}">Review</a>
+                    </li>
+                    <li class="nav-item sidebar-nav-item">
+                        <a class="nav-link js-scroll-trigger" href="{% url 'input-view' %}">Input</a>
+                    </li>
+                    <li class="nav-item sidebar-nav-item">
+                        <a class="nav-link js-scroll-trigger" href="{% url 'search' %}">Search</a>
+                    </li>
+                    <li class="nav-item sidebar-nav-item">
+                        <a class="nav-link js-scroll-trigger" href="{% url 'user_profile' %}">Manage Profile</a>
+                    </li>
+                    <li class="nav-item sidebar-nav-item">
+                        <a href="#" class="nav-link js-scroll-trigger" id="logout-link">Log out</a>
+                    </li>
+                    <script>
+                        document.getElementById('logout-link').addEventListener('click', function(e) {
+                            e.preventDefault();  // 防止页面跳转
+                    
+                            // 创建一个隐藏的表单，用于发起 POST 请求
+                            var form = document.createElement('form');
+                            form.method = 'POST';
+                            form.action = '{% url "logout" %}';  // 填写登出URL
+                    
+                            // 创建一个隐藏的 csrf_token 输入框
+                            var csrfToken = document.createElement('input');
+                            csrfToken.type = 'hidden';
+                            csrfToken.name = 'csrfmiddlewaretoken';
+                            csrfToken.value = '{{ csrf_token }}';
+                            form.appendChild(csrfToken);
+                    
+                            // 将表单添加到页面中并提交
+                            document.body.appendChild(form);
+                            form.submit();
+                        });
+                    </script>
+                    {% else %}
+                    <!-- 用户未登录时的导航 -->
+                    <li class="nav-item sidebar-nav-item">
+                        <a class="nav-link js-scroll-trigger" href="{% url 'login' %}">Log in</a>
+                    </li>
+                    <li class="nav-item sidebar-nav-item">
+                        <a class="nav-link js-scroll-trigger" href="{% url 'register' %}">Sign up!</a>
+                    </li>
+                    {% endif %}
+    
+                    <!-- 公共内容 -->
+                    <li class="nav-item sidebar-nav-item">
+                        <a class="nav-link js-scroll-trigger" href="{% url 'about' %}">About</a>
+                    </li>
+                    <li class="nav-item sidebar-nav-item">
+                        <a class="nav-link js-scroll-trigger" href="mailto:lubaixun@gmail.com">Contact</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    
+
+    {% block content %}
+    {% endblock %}
+
+    <footer class="footer text-center" style="padding: 10px 0; background-color: #f8f9fa;">
+        <div class="container">
+            <ul class="list-inline mb-2" style="margin: 0; padding: 0;">
+                <li class="list-inline-item">&nbsp;<a class="link-light social-link rounded-circle" href="#"><i class="icon-logout"></i></a></li>
+                <li class="list-inline-item">&nbsp;<a class="link-light social-link rounded-circle" href="#"><i class="icon-present"></i></a></li>
+                <li class="list-inline-item">&nbsp;<a class="link-light social-link rounded-circle" href="#"><i class="icon-envelope-open"></i></a></li>
+            </ul>
+            <p class="text-muted mb-0 small" style="font-size: 14px; margin-top: 5px;">Copyright &nbsp;© Brandon Lu 2024</p>
+        </div>
+        <a class="js-scroll-trigger scroll-to-top rounded" href="#page-top" style="bottom: 10px;"><i class="fa fa-angle-up"></i></a>
+    </footer>
+    
+
+    <!-- 引入 Bootstrap 和自定义 JavaScript -->
+    <script src="{% static 'bootstrap/js/bootstrap.min.js' %}"></script>
+    <script src="{% static 'bootstrap/js/bootstrap.bundle.min.js' %}"></script>
+
+    <!-- <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.2/dist/js/bootstrap.bundle.min.js"></script> -->
+
+</body>
+
+<script>
+    // 等待页面加载完成后渲染 MathJax
+    document.addEventListener("DOMContentLoaded", function () {
+        MathJax.typeset();
+    });
+</script>
+<script src="{% static 'js/stylish-portfolio.js' %}"></script>
+</html>

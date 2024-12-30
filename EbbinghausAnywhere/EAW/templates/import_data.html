@@ -1,0 +1,97 @@
+{% extends "base_generic.html" %}
+{% load static %}
+
+{% block content %}
+<!-- Header with Background Image -->
+<div class="bg-container">
+    <div class="container text-center text-white">
+        <!-- 根据需要可以显示标题 -->
+        <!-- <h1 class="display-4 fw-bold bg-title">Import Data</h1> -->
+    </div>
+</div>
+
+<style>
+/* 背景容器样式 */
+.bg-container {
+    background-image: url('{% static "img/banner-callout.jpg" %}');
+    background-size: cover;
+    background-position: center;
+    height: auto;
+    aspect-ratio: 2560 / 80;
+    width: 100%;
+    position: relative;
+}
+
+/* 标题样式 */
+.bg-title {
+    margin-top: 0;
+    text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.7);
+    font-size: clamp(1.5rem, 5vw, 3rem);
+    line-height: 1.2;
+}
+</style>
+
+<!-- Import Data Section -->
+<section id="import-section" class="py-5" style="background-color: #f8f9fa;">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-12 col-md-8">
+                <!-- Card for Import Form -->
+                <div class="card mb-4 shadow border-0">
+                    <div class="card-header text-center bg-primary text-white">
+                        <h5 class="mb-0">Import Data</h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- 显示反馈消息（仅在 POST 请求时） -->
+                        {% if messages and request.method == "POST" %}
+                            <ul class="alert alert-info">
+                                {% for message in messages %}
+                                    <li>{{ message }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
+
+                        <!-- Import Form -->
+                        <form method="POST" enctype="multipart/form-data" action="{% url 'import_user_data' %}">
+                            {% csrf_token %}
+                            <div class="mb-3">
+                                <label for="file" class="form-label">Upload Excel File:</label>
+                                <input type="file" id="file" name="file" class="form-control" accept=".xlsx" required>
+                            </div>
+
+                            <!-- Checkbox for Fetch Definitions -->
+                            <div class="form-check mb-3">
+                                <input type="checkbox" id="fetch_definitions" name="fetch_definitions" class="form-check-input">
+                                <label class="form-check-label" for="fetch_definitions">Fetch Definitions</label>
+                            </div>
+
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary">Import Data</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Import Results Section -->
+                {% if import_results %}
+                <div class="card shadow border-0">
+                    <div class="card-body">
+                        <h5 class="mb-3">Import Results</h5>
+                        <p>Successfully imported {{ import_results.success_count }} records.</p>
+                        {% if import_results.errors %}
+                            <p>The following records were skipped due to errors:</p>
+                            <ul>
+                                {% for error in import_results.errors %}
+                                    <li>{{ error }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+

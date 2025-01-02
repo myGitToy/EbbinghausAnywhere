@@ -2,7 +2,12 @@ from django.urls import path, re_path
 from EAW import views
 from django.contrib.auth import views as auth_views
 from .views import ItemDetailView
+from django.contrib import admin
 
+# 修改管理页面标题
+admin.site.site_header = "Ebbinghaus Anywhere"
+# 修改管理页面副标题
+admin.site.index_title = "Manage User Data"
 
 urlpatterns = [
     path('', views.home, name='home'), # Home view
@@ -38,5 +43,4 @@ urlpatterns = [
     path('export_user_data/', views.export_user_data_to_excel, name='export_user_data'),
     path('import_user_data/', views.import_items_from_excel, name='import_user_data'),
     path('about/', views.about, name='about'),  # 关于页面
-
 ]

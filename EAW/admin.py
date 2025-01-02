@@ -1,4 +1,6 @@
 from django.contrib import admin
+from django.contrib.admin import AdminSite
+from django.shortcuts import redirect
 from django.urls import path
 from django.utils.translation import gettext_lazy as _
 from .models import Category, Item, ReviewDay
@@ -305,3 +307,4 @@ class ReviewDayAdmin(BaseAdmin):
 admin.site.register(Category, CategoryAdmin)
 admin.site.register(Item, ItemAdmin)
 admin.site.register(ReviewDay, ReviewDayAdmin)
+

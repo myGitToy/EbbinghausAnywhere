@@ -14,40 +14,24 @@ EbbinghausAnywhere is an open sourced memory application for my girl Ellie.
 - 重新分发时必须包含原始版权声明和许可协议文本。
 - 本软件不提供任何担保或责任承诺。
 - 完整的许可协议文本，请参见项目中的 LICENSE 文件或访问 Apache License 2.0 官网。
-开源软件声明
 
-Ebbinghaus Anywhere 项目使用了以下开源软件和工具：
-
-Python
-
-用于项目的核心开发语言。Python 是由 Python Software Foundation 开发和维护的开源软件，遵循 Python Software Foundation License。
-
-Django
-
-用于构建项目的后端框架。Django 是由 Django Software Foundation 开发和维护的开源框架，遵循 BSD License。
-
-MathJax
-
-用于网页中渲染数学公式。MathJax 是一个开源工具，遵循 Apache License 2.0。
-
-Bootstrap
-
-用于前端 UI 的样式设计与组件构建。Bootstrap 是由 Twitter 开发的开源框架，遵循 MIT License。
-
-MySQL
-
-用于存储和管理项目数据库。MySQL 是由 Oracle Corporation 开发的开源数据库管理系统，遵循 GPL License（社区版）。
-
-Flatpickr
-
-用于日期选择器功能。Flatpickr 是一款轻量级的开源日期选择器插件，遵循 MIT License。
-
-Stylish Portfolio Bootstrap 模板
-
-用于前端页面的布局设计。该模板是基于 Bootstrap 的免费模板，遵循 Creative Commons Attribution 3.0 License。
-
-此外，本项目使用了以下付费服务：
-
+**开源软件声明**  
+Ebbinghaus Anywhere 项目使用了以下开源软件和工具：  
+Python  
+用于项目的核心开发语言。Python 是由 Python Software Foundation 开发和维护的开源软件，遵循 Python Software Foundation License。  
+Django  
+用于构建项目的后端框架。Django 是由 Django Software Foundation 开发和维护的开源框架，遵循 BSD License。  
+MathJax  
+用于网页中渲染数学公式。MathJax 是一个开源工具，遵循 Apache License 2.0。  
+Bootstrap  
+用于前端 UI 的样式设计与组件构建。Bootstrap 是由 Twitter 开发的开源框架，遵循 MIT License。  
+MySQL  
+用于存储和管理项目数据库。MySQL 是由 Oracle Corporation 开发的开源数据库管理系统，遵循 GPL License（社区版）。  
+Flatpickr  
+用于日期选择器功能。Flatpickr 是一款轻量级的开源日期选择器插件，遵循 MIT License。  
+Stylish Portfolio Bootstrap 模板  
+用于前端页面的布局设计。该模板是基于 Bootstrap 的免费模板，遵循 Creative Commons Attribution 3.0 License。  
+此外，本项目使用了以下付费服务：  
 百度翻译 API：提供文本翻译服务，具体信息请参阅 百度翻译 API 官网.
 
 ## 2. 软件功能

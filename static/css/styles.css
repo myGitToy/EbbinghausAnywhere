@@ -27,6 +27,43 @@ main {
         width: 90%;
     }
 }
+/* 默认样式 */
+.masthead-title {
+    font-size: 4vw;
+    line-height: 1.2;
+    /* color: #fff; */
+    /* text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.7); */
+}
+.masthead-subtitle {
+    font-size: 2vw;
+    line-height: 1.5;
+    /* color: #ddd; */
+}
+
+/* 针对平板设备的优化 */
+@media (max-width: 768px) {
+    .masthead-title {
+        font-size: 6vw;
+        line-height: 1.3;
+    }
+    .masthead-subtitle {
+        font-size: 3.5vw;
+        line-height: 1.6;
+    }
+}
+
+/* 针对手机设备的进一步优化 */
+@media (max-width: 480px) {
+    .masthead-title {
+        font-size: 7vw;
+        line-height: 1.4;
+    }
+    .masthead-subtitle {
+        font-size: 4.5vw;
+        line-height: 1.7;
+    }
+}
+
 @media (max-width: 768px) {
     .masthead {
         padding: 1rem 0;
@@ -34,11 +71,11 @@ main {
         min-height: 300px;
     }
     h1 {
-        font-size: 1.5rem;
+        font-size: 4rem;
         margin-bottom: 0.5rem;
     }
     h3 {
-        font-size: 1rem;
+        font-size: 4rem;
     }
     .btn {
         padding: 0.4rem 0.8rem;
@@ -58,7 +95,35 @@ main {
         display: none;
     }
 }
+/* 默认字体样式 */
+.service-title {
+    font-size: 1.8vw;
+    text-align: center;
+}
+.service-text {
+    font-size: 1vw;
+    text-align: center;
+}
 
+/* 小屏幕优化 */
+@media (max-width: 768px) {
+    .service-title {
+        font-size: 4vw; /* 增大标题字体 */
+    }
+    .service-text {
+        font-size: 3vw; /* 增大段落字体 */
+    }
+}
+
+/* 超小屏幕进一步优化 */
+@media (max-width: 480px) {
+    .service-title {
+        font-size: 5vw; /* 进一步增大标题字体 */
+    }
+    .service-text {
+        font-size: 4vw; /* 进一步增大段落字体 */
+    }
+}
 .table-transparent {
     background-color: transparent; /* 设置背景颜色为透明 */
     color: inherit; /* 继承文字颜色 */

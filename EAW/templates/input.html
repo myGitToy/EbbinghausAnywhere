@@ -3,33 +3,7 @@
 {% load form_filters %}  <!-- 加载自定义过滤器 -->
 
 {% block content %}
-<!-- Header with Background Image -->
-<div class="bg-container">
-    <div class="container text-center text-white">
-        <!-- <h1 class="display-4 fw-bold bg-title">Input Items</h1> -->
-    </div>
-</div>
-
-<style>
-    /* 背景容器样式 */
-    .bg-container {
-        background-image: url('{% static "img/banner-callout.jpg" %}');
-        background-size: cover;
-        background-position: center;
-        height: auto;
-        aspect-ratio: 2560 / 80;
-        width: 100%;
-        position: relative;
-    }
-    
-    /* 标题样式 */
-    .bg-title {
-        margin-top: 0;
-        text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.7);
-        font-size: clamp(1.5rem, 5vw, 3rem);
-        line-height: 1.2;
-    }
-</style>
+{% include "includes/banner.html" %}
 
 <div class="container py-5">
     <div class="row justify-content-center">
@@ -38,7 +12,7 @@
         
         <!-- Header -->
         <div class="card-header text-center bg-primary text-white">
-            <h5 class="mb-0">日积月累 - Input Items</h5>
+            <h5 class="mb-0">Input Items</h5>
         </div>
 
         <!-- Form Body -->
@@ -77,7 +51,7 @@
 
                     <!-- 提交按钮 -->
                     <div class="col-12 mt-4 text-center">
-                        <input type="submit" class="btn btn-success btn-lg" value="保存">
+                        <input type="submit" class="btn btn-success" value="保存">
                     </div>
                 </div>
             </form>

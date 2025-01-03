@@ -1,34 +1,7 @@
 {% extends 'base_generic.html' %}
 {% load static %}
 {% block content %}
-<!-- Header with Background Image -->
-<div class="bg-container">
-    <div class="container text-center text-white">
-        <!-- 可以根据需要取消下面的注释来显示标题 -->
-        <!-- <h1 class="display-4 fw-bold bg-title">Review Home</h1> -->
-    </div>
-</div>
-
-<style>
-/* 背景容器样式 */
-.bg-container {
-    background-image: url('{% static "img/banner-callout.jpg" %}');
-    background-size: cover;
-    background-position: center;
-    height: auto;
-    aspect-ratio: 2560 / 80;
-    width: 100%;
-    position: relative;
-}
-
-/* 标题样式 */
-.bg-title {
-    margin-top: 0;
-    text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.7);
-    font-size: clamp(1.5rem, 5vw, 3rem);
-    line-height: 1.2;
-}
-</style>
+{% include "includes/banner.html" %}
 
 <!-- Review Form Section -->
 <section id="review-home" class="py-5" style="background-color: #f8f9fa;">

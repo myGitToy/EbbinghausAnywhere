@@ -1,8 +1,19 @@
 <style>
-.card {
-    background-color: rgba(0, 0, 0, 0.9); /* 提升透明度 */
-    color: #fff;
+body {
+    display: flex;
+    flex-direction: column;
+    background-color: #f8f9fa; /* 确保背景颜色一致 */
+    min-height: 100vh; /* 页面高度至少为视口高度 */
 }
+main {
+    flex-grow: 1; /* 主体内容区域可扩展，填充剩余空间 */
+}
+.footer {
+    background-color: #f8f9fa; /* 确保背景颜色一致 */
+    padding: 10px 0;
+}
+
+
 .toast-container .toast {
     opacity: 1;
     margin-top: 10px;
@@ -149,10 +160,12 @@
 .card-body.p-0 {
     padding: 0;
 }
-
 .card {
+    /*background-color: rgba(0, 0, 0, 0.9); /*提升透明度*/
+    /*color: #fff;*/
     width: 100%;  /* 保证卡片宽度继承 */
 }
+
 
 .card-header {
     padding: 1rem; /* 可调整 */

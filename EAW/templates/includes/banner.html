@@ -1,0 +1,37 @@
+<!-- Banner HTML Loaded -->
+{% load static %}
+<!-- Header with Background Image -->
+<div class="bg-container">
+    <div class="container text-center text-white">
+        <!-- <h1 class="display-4 fw-bold bg-title">Search Items</h1> -->
+    </div>
+</div>
+
+<style>
+/* 背景容器样式 */
+.bg-container {
+    background-image: url('{% static "img/banner-callout.jpg" %}');
+    background-size: cover;
+    background-position: center;
+    height: auto;
+    min-height: 75px; /* 设置最小高度，防止图片过矮 */
+    aspect-ratio: 2560 / 100;
+    width: 100%;
+    position: relative;
+}
+
+/* 标题样式 */
+.bg-title {
+    margin-top: 0;
+    text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.7);
+    font-size: clamp(1.5rem, 5vw, 3rem);
+    line-height: 1.2;
+}
+/* 针对小屏幕优化背景高度 */
+@media (max-width: 768px) {
+    .bg-container {
+        height: auto; /* 自动高度 */
+        aspect-ratio: 768 / 75; /* 确保背景比例 */
+    }
+}
+</style>

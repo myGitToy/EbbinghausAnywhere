@@ -15,6 +15,7 @@ from django.template.response import TemplateResponse
 import re
 import logging
 import difflib
+from .utils import fetch_and_merge_translation
 
 logger = logging.getLogger(__name__)
 
@@ -182,40 +183,6 @@ class ItemAdmin(BaseAdmin):
         ]
         return custom_urls + urls
     
-    @staticmethod
-    def clean_and_split_lines(content):
-        """
-        清理内容并按行分割，去除无关符号和空行。
-        """
-        if not content:
-            return []
-        # 去除前后空白字符，并按行分割
-        cleaned_lines = [line.strip() for line in content.strip().split('\n') if line.strip()]
-        return cleaned_lines
-
-    @staticmethod
-    def compare_and_merge(existing_lines, new_lines, threshold=0.8):
-        """
-        逐行比较新旧内容，使用difflib筛选出相似度低于阈值的行，并合并。
-        """
-        merged_lines = existing_lines.copy()  # 保留原有内容
-        existing_set = set(existing_lines)  # 用集合快速去重
-
-        for new_line in new_lines:
-            is_duplicate = False
-            for existing_line in existing_lines:
-                # 计算相似度
-                similarity = difflib.SequenceMatcher(None, existing_line, new_line).ratio()
-                if similarity >= threshold:
-                    is_duplicate = True
-                    break
-            # 仅在不重复的情况下添加
-            if not is_duplicate and new_line not in existing_set:
-                merged_lines.append(new_line)
-
-        return merged_lines
-
-
     def translate_item(self, request, item_id):
         """
         调用翻译函数，逐行比较释义并合并新内容。
@@ -225,32 +192,11 @@ class ItemAdmin(BaseAdmin):
         if item.category.name != "单词":
             return JsonResponse({"success": False, "message": "当前类别不是 '单词'，无法翻译。"})
 
-        # 调用翻译函数
-        translation_result = baidu_translate(item.item)
-        if not translation_result:
+        # 使用工具函数来获取和合并翻译
+        updated_content, src_tts, phonetic_am, phonetic_en = fetch_and_merge_translation(item.item, item.content)
+
+        if not updated_content:
             return JsonResponse({"success": False, "message": "翻译失败，请稍后重试。"})
-
-        # 解析翻译结果
-        parts_and_means = translation_result.get('parts_and_means', [])
-        simple_meaning = translation_result.get('simple_meaning', [])
-        src_tts = translation_result.get('src_tts', '')
-        phonetic = translation_result.get('phonetic', [])
-        phonetic_am = phonetic[1] if len(phonetic) > 1 else None
-        phonetic_en = phonetic[0] if len(phonetic) > 0 else None
-
-        # 获取新旧内容
-        current_content = item.content or ""
-        new_content = "\n".join(parts_and_means if parts_and_means else simple_meaning)
-
-        # 清理并分割内容
-        existing_lines = self.clean_and_split_lines(current_content)
-        new_lines = self.clean_and_split_lines(new_content)
-
-        # 逐行比较并合并
-        updated_lines = self.compare_and_merge(existing_lines, new_lines, threshold=0.8)
-
-        # 合并后的内容
-        updated_content = "\n".join(updated_lines)
 
         # 更新条目
         item.content = updated_content

@@ -42,6 +42,7 @@ from .models import Item, Category, Proficiency
 from .admin import ItemAdmin
 import difflib
 import uuid
+from .utils import fetch_and_merge_translation
 
 logger = logging.getLogger(__name__)
 
@@ -658,19 +659,28 @@ def import_items_from_excel(request):
                     errors.append(f"第 {row_idx} 行缺少 Item 字段，已跳过。")
                     continue
 
-                content = row[column_index.get("Content", None)] or ""
-                input_date = row[column_index.get("Input Date", None)] or now().date()
-                init_date = row[column_index.get("Init Date", None)] or now().date()
+                content_index = column_index.get("Content")
+                content = row[content_index] if content_index is not None else ""
+                # 替换 _x000D_ 字符为换行符，先检查是否为 None
+                if content:
+                    content = content.replace("_x000D_", "\n")
+                else:
+                    content = ""  # 如果 content 为 None，赋空字符串
+
+                input_date_index = column_index.get("Input Date")
+                input_date = row[input_date_index] if input_date_index is not None else now().date()
+
+                init_date_index = column_index.get("Init Date")
+                init_date = row[init_date_index] if init_date_index is not None else now().date()
 
                 # 处理 Proficiency 字段
                 proficiency_name = row[column_index.get("Proficiency", None)] or "Unfamiliar"
                 proficiency_degree = proficiency_map.get(proficiency_name, Proficiency.UNFAMILIAR)
 
-                category_name = row[column_index.get("Category", None)]
-                src_tts = row[column_index.get("TTS URL", None)] or ""
-                us_phonetic = row[column_index.get("US Phonetic", None)] or ""
-                uk_phonetic = row[column_index.get("UK Phonetic", None)] or ""
+                category_index = column_index.get("Category")
+                category_name = row[category_index] if category_index is not None else ""
 
+                # 获取分类对象
                 category = None
                 if category_name:
                     categories = Category.objects.filter(name=category_name, user=user)
@@ -679,22 +689,16 @@ def import_items_from_excel(request):
                     else:
                         category = Category.objects.create(name=category_name, user=user)
 
-                # 根据复选框的状态决定是否获取释义
-                if fetch_definitions:
-                    translation_result = baidu_translate(item_name)
-                    if translation_result:
-                        phonetic = translation_result.get("phonetic", [])
-                        us_phonetic = phonetic[1] if len(phonetic) > 1 else us_phonetic
-                        uk_phonetic = phonetic[0] if len(phonetic) > 0 else uk_phonetic
-                        src_tts = translation_result.get("src_tts", src_tts)
+                # 初始化这些字段为默认值
+                src_tts = ""
+                phonetic_am = ""
+                phonetic_en = ""
 
-                        simple_meaning = translation_result.get("simple_meaning", [])
-                        parts_and_means = translation_result.get("parts_and_means", [])
-
-                        new_definition = "\n".join([str(item) for item in parts_and_means]).strip() if parts_and_means else (simple_meaning[0] if simple_meaning else "")
-
-                        existing_definition = " ".join(ItemAdmin.clean_definition(content))
-                        content = compare_lines(existing_definition, new_definition)
+                # 只有类别为“单词”的条目才调用获取翻译的功能
+                if fetch_definitions and category and category.name == "单词":
+                    updated_content, src_tts, phonetic_am, phonetic_en = fetch_and_merge_translation(item_name, content)
+                    # 更新内容
+                    content = updated_content
 
                 item = Item(
                     user=user,
@@ -705,8 +709,8 @@ def import_items_from_excel(request):
                     proficiency=proficiency_degree,
                     category=category,
                     src_tts=src_tts,
-                    us_phonetic=us_phonetic,
-                    uk_phonetic=uk_phonetic,
+                    us_phonetic=phonetic_am,
+                    uk_phonetic=phonetic_en,
                 )
                 items_to_create.append(item)
 
@@ -730,6 +734,8 @@ def import_items_from_excel(request):
 
     messages.error(request, "请求无效，请上传文件。")
     return render(request, "import_data.html")
+
+
 
 
 @staticmethod

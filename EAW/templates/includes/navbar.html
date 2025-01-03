@@ -1,0 +1,75 @@
+<a class="menu-toggle rounded" href="#"><i class="fa fa-bars"></i></a>
+<nav class="navbar navbar-expand navbar-light" id="sidebar-wrapper">
+    <div class="container">
+        <button data-bs-toggle="collapse" class="navbar-toggler d-none" data-bs-target="#sidebar-nav"></button>
+        <div class="collapse navbar-collapse">
+            <ul class="navbar-nav sidebar-nav" id="sidebar-nav">
+                <li class="nav-item sidebar-brand">
+                    <a class="nav-link active js-scroll-trigger" href="{% url 'home' %}">Ebbinghaus Anywhere</a>
+                </li>
+                
+                {% if user.is_authenticated %}
+                <!-- 用户已登录时的导航 -->
+                <li class="nav-item sidebar-nav-item">
+                    <a class="nav-link js-scroll-trigger" href="{% url 'item-list' %}">All Items</a>
+                </li>
+                <li class="nav-item sidebar-nav-item">
+                    <a class="nav-link js-scroll-trigger" href="{% url 'review-home' %}">Review</a>
+                </li>
+                <li class="nav-item sidebar-nav-item">
+                    <a class="nav-link js-scroll-trigger" href="{% url 'input-view' %}">Input</a>
+                </li>
+                <li class="nav-item sidebar-nav-item">
+                    <a class="nav-link js-scroll-trigger" href="{% url 'search' %}">Search</a>
+                </li>
+                <li class="nav-item sidebar-nav-item">
+                    <a class="nav-link js-scroll-trigger" href="{% url 'user_profile' %}">Manage Profile</a>
+                </li>
+                <li class="nav-item sidebar-nav-item">
+                    <a class="nav-link js-scroll-trigger" href="{% url 'admin:index' %}">Manage Data</a>
+                </li>
+                <li class="nav-item sidebar-nav-item">
+                    <a href="#" class="nav-link js-scroll-trigger" id="logout-link">Log out</a>
+                </li>
+                <script>
+                    document.getElementById('logout-link').addEventListener('click', function(e) {
+                        e.preventDefault();  // 防止页面跳转
+                
+                        // 创建一个隐藏的表单，用于发起 POST 请求
+                        var form = document.createElement('form');
+                        form.method = 'POST';
+                        form.action = '{% url "logout" %}';  // 填写登出URL
+                
+                        // 创建一个隐藏的 csrf_token 输入框
+                        var csrfToken = document.createElement('input');
+                        csrfToken.type = 'hidden';
+                        csrfToken.name = 'csrfmiddlewaretoken';
+                        csrfToken.value = '{{ csrf_token }}';
+                        form.appendChild(csrfToken);
+                
+                        // 将表单添加到页面中并提交
+                        document.body.appendChild(form);
+                        form.submit();
+                    });
+                </script>
+                {% else %}
+                <!-- 用户未登录时的导航 -->
+                <li class="nav-item sidebar-nav-item">
+                    <a class="nav-link js-scroll-trigger" href="{% url 'login' %}">Log in</a>
+                </li>
+                <li class="nav-item sidebar-nav-item">
+                    <a class="nav-link js-scroll-trigger" href="{% url 'register' %}">Sign up!</a>
+                </li>
+                {% endif %}
+
+                <!-- 公共内容 -->
+                <li class="nav-item sidebar-nav-item">
+                    <a class="nav-link js-scroll-trigger" href="{% url 'about' %}">About</a>
+                </li>
+                <li class="nav-item sidebar-nav-item">
+                    <a class="nav-link js-scroll-trigger" href="mailto:lubaixun@gmail.com">Contact</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>

@@ -1,0 +1,28 @@
+{% load static %}
+<!-- MathJax 配置 -->
+<script>
+    window.MathJax = {
+        tex: {
+            inlineMath: [['$', '$'], ['\\(', '\\)']],
+            packages: { '[+]': ['mhchem', 'extpfeil'] }
+        },
+        loader: {
+            load: ['[tex]/mhchem', '[tex]/extpfeil']
+        },
+    };
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script> 
+
+<!-- 引入 Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- 引入 Bootstrap 和自定义 JavaScript -->
+<script src="{% static 'bootstrap/js/bootstrap.min.js' %}"></script>
+<script src="{% static 'bootstrap/js/bootstrap.bundle.min.js' %}"></script>
+
+    <script>
+    // 等待页面加载完成后渲染 MathJax
+    document.addEventListener("DOMContentLoaded", function () {
+        MathJax.typeset();
+    });
+</script>
+<script src="{% static 'js/stylish-portfolio.js' %}"></script>

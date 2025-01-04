@@ -22,19 +22,19 @@
                 <div class="row g-3">
                     <!-- 日期选择 -->
                     <div class="col-md-6">
-                        <label for="input_date" class="form-label">选择日期：</label>
+                        <label for="input_date" class="form-label">Choose Date:</label>
                         {{ form.input_date|add_class:"form-control" }}
                     </div>
                     
                     <!-- 类别选择 -->
                     <div class="col-md-6">
-                        <label for="category" class="form-label">选择类别：</label>
+                        <label for="category" class="form-label">Choos Category:</label>
                         {{ form.category|add_class:"form-control" }}
                     </div>
                     
                     <!-- 输入内容 -->
                     <div class="col-12">
-                        <label for="input" class="form-label">输入内容：</label>
+                        <label for="input" class="form-label">Input Items and content:</label>
                         {{ form.input|add_class:"form-control" }}
                     </div>
 
@@ -44,7 +44,7 @@
                             <input class="form-check-input" type="checkbox" id="translate-checkbox" name="translate" 
                                 {% if not api_configured %}disabled{% endif %}>
                             <label class="form-check-label" for="translate-checkbox">
-                                获取释义
+                                Fetch Translations
                             </label>
                         </div>
                     </div>

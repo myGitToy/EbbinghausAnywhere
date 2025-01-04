@@ -17,34 +17,34 @@
 - 通过mathjax支持使用LaTeX语法输入数学公式和符号并支持mhchem输入化学方程式，冒号后输入“\$\$公式内容$$”或“\$公式内容\$”即可调用mathjax渲染公式。详细用法参见[mathjax文档](https://www.osgeo.cn/mathjax/index.html)和[mhchem for MathJax](https://mhchem.github.io/MathJax-mhchem/)
 - 勾选“Fetch Translations”选项可对单词类别的内容查询音标、发音和中文释义。
 ### 2.3 进行复习
-在Review页面可以选择日期进行复习，默认为当日
+- 在Review页面可以选择日期进行复习，默认为当日
 ### 2.4 导入和导出数据
 在Manage Profile页面可以更改账号信息，导入和导出数据
 ## 3. 部署方法
 - 需要在根目录下创建本地.env文件放置密钥，如果需要开启在线查询单词释义功能，需要在其中放入百度api应用ID和密钥，参考[文本翻译-词典版](https://cloud.baidu.com/doc/MT/s/nkqrzmbpc)
 ```
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY=your_django_secret_key
-# BAIDU的应用ID
-BAIDU_API_KEY=your_baidu_api_key
-# BAIDU的应用密钥
-BAIDU_SECRET_KEY=your_baidu_secret_key
+    # SECURITY WARNING: keep the secret key used in production secret!
+    SECRET_KEY=your_django_secret_key
+    # BAIDU的应用ID
+    BAIDU_API_KEY=your_baidu_api_key
+    # BAIDU的应用密钥
+    BAIDU_SECRET_KEY=your_baidu_secret_key
 ```
 
 - 需要在EbbinghausAnywhere目录下创建本地local_settings文件放置数据库信息等
 ```
-from .settings import BASE_DIR  # 导入 settings.py 中定义的 BASE_DIR
+    from .settings import BASE_DIR  # 导入 settings.py 中定义的 BASE_DIR
 
-# Replace the following Database setting to your datebase setting.
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+    # Replace the following Database setting to your datebase setting.
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
     }
-}
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+    # SECURITY WARNING: don't run with debug turned on in production!
+    DEBUG = True
 ```
 ## 4 开源项目
 本项目基于 Apache License 2.0 授权发布。您可以在遵守许可协议条款的前提下自由使用、修改和分发本软件。许可协议的主要内容包括：

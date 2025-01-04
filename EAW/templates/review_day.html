@@ -37,10 +37,10 @@
                                     <p><strong>Input Date:</strong> {{ word.1.inputDate }}</p>
                                     {% if word.1.category.name == "单词" %}
                                         {% if word.1.us_phonetic %}
-                                            <p><strong>US Phonetic:</strong> {{ word.1.us_phonetic }}</p>
+                                            <p><strong>US Phonetic:</strong> /{{ word.1.us_phonetic }}/</p>
                                         {% endif %}
                                         {% if word.1.uk_phonetic %}
-                                            <p><strong>UK Phonetic:</strong> {{ word.1.uk_phonetic }}</p>
+                                            <p><strong>UK Phonetic:</strong> /{{ word.1.uk_phonetic }}/</p>
                                         {% endif %}
                                         {% if word.1.src_tts %}
                                             <p><strong>Pronunciation:</strong></p>

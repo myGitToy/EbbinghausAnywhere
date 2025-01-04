@@ -17,7 +17,7 @@
 - 通过mathjax支持使用LaTeX语法输入数学公式和符号并支持mhchem输入化学方程式，冒号后输入“\$\$公式内容$$”或“\$公式内容\$”即可调用mathjax渲染公式。详细用法参见[mathjax文档](https://www.osgeo.cn/mathjax/index.html)和[mhchem for MathJax](https://mhchem.github.io/MathJax-mhchem/)
 - 勾选“Fetch Translations”选项可对单词类别的内容查询音标、发音和中文释义。
 ### 2.3 进行复习
-- 在Review页面可以选择日期进行复习，默认为当日
+- 在Review页面可以选择日期进行复习，默认为当日。点击条目可以选择"Yes" "No" 来表示掌握程度，"Reset"可将该条目复习周期重置为从当日开始。
 ### 2.4 导入和导出数据
 在Manage Profile页面可以更改账号信息，导入和导出数据
 ## 3. 部署方法

@@ -42,6 +42,9 @@ from .models import Item, Category, Proficiency
 import difflib
 import uuid
 from .utils import fetch_and_merge_translation
+import markdown
+from django.conf import settings
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -756,5 +759,19 @@ def compare_lines(existing_lines, new_lines):
     return "\n".join(result)
 def about(request):
     return render(request, 'about.html')  # 渲染 about.html 页面
+
+def readme_view(request):
+    # 使用 BASE_DIR 获取 README.md 文件的路径
+    readme_path = os.path.join(settings.BASE_DIR, 'README.md')
+
+    # 读取文件内容
+    with open(readme_path, 'r', encoding='utf-8') as f:
+        readme_content = f.read()
+
+    # 将 Markdown 转换为 HTML，并启用 fenced_code 扩展
+    html_content = markdown.markdown(readme_content, extensions=['fenced_code'])
+
+    # 渲染模板
+    return render(request, 'readme.html', {'content': html_content})
 
 

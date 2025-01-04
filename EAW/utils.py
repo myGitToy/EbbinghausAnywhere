@@ -41,7 +41,7 @@ def fetch_and_merge_translation(item_name, existing_content):
     # 调用翻译函数
     translation_result = baidu_translate(item_name)
     if not translation_result:
-        return existing_content, "", "", "", ""  # 返回现有内容和空值，表示翻译失败
+        return existing_content, "", "", ""  # 返回现有内容和空值，表示翻译失败
 
     # 解析翻译结果
     parts_and_means = translation_result.get('parts_and_means', [])

@@ -43,4 +43,5 @@ urlpatterns = [
     path('export_user_data/', views.export_user_data_to_excel, name='export_user_data'),
     path('import_user_data/', views.import_items_from_excel, name='import_user_data'),
     path('about/', views.about, name='about'),  # 关于页面
+    path('readme/', views.readme_view, name='readme'),
 ]

@@ -39,7 +39,6 @@ from .translate import baidu_translate, parse_json_to_string, check_api_keys
 import openpyxl
 from django.db import transaction
 from .models import Item, Category, Proficiency
-from .admin import ItemAdmin
 import difflib
 import uuid
 from .utils import fetch_and_merge_translation

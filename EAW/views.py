@@ -323,7 +323,7 @@ def SearchView(request):
 #复习单词的功能
 @login_required
 def ReviewHomeView(request):
-    print("Request routed to ReviewHomeView")  # 调试
+    # print("Request routed to ReviewHomeView")  # 调试
     today = datetime.today().date()
     #print(today)
     return render(

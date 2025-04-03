@@ -355,7 +355,8 @@ def ReviewView(request, year, month, day):
     # 根据复习曲线匹配单词
     for interval in ReviewDay.objects.filter(user=request.user):
         checkday = reviewDate - timedelta(days=interval.day)
-        review_items = Item.objects.filter(user=request.user, initDate=checkday)
+        # 修改查询逻辑：查找所有在checkday或之前输入的项目，而不只是checkday当天的
+        review_items = Item.objects.filter(user=request.user, initDate__lte=checkday)
         for item in review_items:
             # 生成 item 的详细页面 URL
             detail_url = reverse('item-detail', args=[item.pk])

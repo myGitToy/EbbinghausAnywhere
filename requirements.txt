@@ -1,0 +1,6 @@
+django
+django-environ
+django-dirtyfields
+requests
+openpyxl
+markdown

@@ -1,0 +1,2 @@
+#打包镜像文件命令
+docker build -t ewa:0.0.4 .

@@ -3,18 +3,26 @@ import json
 import environ
 from django.http import JsonResponse
 import re
+from pathlib import Path
 
 env = environ.Env(
     DEBUG=(bool, False)
 )
+
+# 读取 .env 文件
+BASE_DIR = Path(__file__).resolve().parent.parent
+environ.Env.read_env(BASE_DIR / '.env')
 
 # 获取 BAIDU 的 API 密钥
 BAIDU_API_KEY = env('BAIDU_API_KEY', default=None)
 BAIDU_SECRET_KEY = env('BAIDU_SECRET_KEY', default=None)
 
 def baidu_translate(query):
-    #print(query)
     # 检查 API 密钥是否配置
+    print(f"=== 检查API密钥 ===")
+    print(f"BAIDU_API_KEY: {BAIDU_API_KEY}")
+    print(f"BAIDU_SECRET_KEY: {BAIDU_SECRET_KEY}")
+    
     if not BAIDU_API_KEY or not BAIDU_SECRET_KEY:
         print("API 密钥未配置")
         return JsonResponse({"success": False, "message": "未配置百度 API 密钥"}, status=400)
@@ -46,7 +54,8 @@ def baidu_translate(query):
 
         # 转换 JSON 数据为 Python 字典
         json_response = response.json()
-        #print(json_response)
+        print("=== 百度翻译API响应 ===")
+        print(json.dumps(json_response, indent=2, ensure_ascii=False))
         # 检查返回的数据，判断输入是否为中文
         if 'result' in json_response:
             trans_result = json_response['result'].get('trans_result', [])
@@ -107,7 +116,15 @@ def get_access_token():
     
     url = "https://aip.baidubce.com/oauth/2.0/token"
     params = {"grant_type": "client_credentials", "client_id": BAIDU_API_KEY, "client_secret": BAIDU_SECRET_KEY}
+    print(f"=== 请求 access_token ===")
+    print(f"URL: {url}")
+    print(f"client_id: {BAIDU_API_KEY}")
+    print(f"client_secret: {BAIDU_SECRET_KEY}")
+    
     response = requests.post(url, params=params)
+    
+    print(f"响应状态码: {response.status_code}")
+    print(f"响应内容: {response.text}")
     
     if response.status_code == 200:
         return str(response.json().get("access_token"))

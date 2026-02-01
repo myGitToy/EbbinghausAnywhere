@@ -30,9 +30,14 @@ db.sqlite3-journal
 .gitignore
 
 # Docker
-Dockerfile
-docker-compose.yml
-.dockerignore
+# 排除本地环境与密钥文件，但保留 Dockerfile 在构建上下文中（不要忽略 Dockerfile）
+.env
+.env.*
+*.pem
+*.key
+*.crt
+certs/
+certbot/
 
 # OS
 .DS_Store

@@ -58,6 +58,16 @@
                 <p class="service-text mb-0 text-faded">Configure your DeepSeek API settings for personalized learning experience.</p>
             </div>
         </div>
+        <!-- Calendar入口（单独一行，突出显示） -->
+        <div class="row mt-4">
+            <div class="col-12 text-center">
+                <a class="mx-auto service-icon rounded-circle mb-3 bg-info" href="{% url 'calendar-month' %}" style="display:inline-block;width:80px;height:80px;line-height:80px;font-size:28px;color:white;">
+                    <i class="icon-calendar"></i>
+                </a>
+                <h4 class="service-title mt-2"><strong>Calendar</strong></h4>
+                <p class="service-text mb-0 text-faded">月视图：查看每天的复习安排与完成情况。</p>
+            </div>
+        </div>
     </div>
 </section>
 {% endblock %}

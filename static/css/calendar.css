@@ -1,0 +1,275 @@
+/* 日历容器样式 */
+#calendar {
+  max-width: 1200px;
+  margin: 20px auto;
+  padding: 0 15px;
+  min-height: 600px;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+#calendar .fc {
+  height: 100%;
+  min-height: 600px;
+}
+
+/* 加载指示器样式 */
+#calendar-loading {
+  max-width: 1200px;
+  margin: 20px auto;
+}
+
+/* FullCalendar 自定义样式 */
+.fc-event {
+  cursor: pointer;
+  border-radius: 3px;
+  padding: 2px 4px;
+}
+
+.fc-event:hover {
+  opacity: 0.85;
+}
+
+.fc-event-title {
+  font-weight: 500;
+  font-size: 0.85rem;
+  padding: 1px 2px;
+}
+
+.fc-event-subtitle {
+  font-size: 0.7rem;
+  margin-top: 2px;
+  opacity: 0.9;
+  line-height: 1.2;
+}
+
+.fc-event-overdue {
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+/* 日期单元格样式 */
+.fc-daygrid-day:hover {
+  background-color: #f8f9fa;
+}
+
+.fc-day-today {
+  background-color: #fff3cd !important;
+}
+
+/* 模态框样式优化 */
+#calendarDayModal .modal-body {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+#calendarDayModal .list-group-item {
+  transition: background-color 0.2s;
+}
+
+#calendarDayModal .list-group-item:hover {
+  background-color: #f8f9fa;
+}
+
+/* 按钮组样式 */
+.btn-group-vertical {
+  min-width: 80px;
+}
+
+.btn-group-vertical .btn {
+  font-size: 0.85rem;
+  padding: 0.25rem 0.5rem;
+}
+
+/* 徽章样式 */
+.badge-warning {
+  background-color: #ffc107;
+  color: #212529;
+}
+
+.badge-success {
+  background-color: #28a745;
+  color: white;
+}
+
+.badge-lg {
+  font-size: 1rem;
+  padding: 0.5rem 0.75rem;
+}
+
+/* 分类标题样式 */
+.border-bottom {
+  border-bottom: 2px solid #dee2e6 !important;
+}
+
+.badge-primary {
+  background-color: #007bff;
+}
+
+.badge-danger {
+  background-color: #dc3545;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  #calendar {
+    padding: 0 5px;
+  }
+  
+  .fc-header-toolbar {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .fc-toolbar-chunk {
+    display: flex;
+    justify-content: center;
+  }
+  
+  #calendarDayModal .d-flex {
+    flex-direction: column;
+  }
+  
+  #calendarDayModal .btn-group-vertical {
+    flex-direction: row !important;
+    width: 100%;
+    margin-top: 10px;
+  }
+  
+  #calendarDayModal .btn-group-vertical .btn {
+    flex: 1;
+  }
+}
+
+/* 悬浮窗样式 */
+.calendar-tooltip {
+  position: absolute;
+  z-index: 10000;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  min-width: 280px;
+  max-width: 400px;
+  max-height: 500px;
+  overflow: hidden;
+  display: none;
+  font-size: 14px;
+  pointer-events: none;
+}
+
+.tooltip-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 12px 15px;
+  font-weight: 600;
+  font-size: 15px;
+  border-radius: 8px 8px 0 0;
+}
+
+.tooltip-body {
+  padding: 10px;
+  max-height: 380px;
+  overflow-y: auto;
+}
+
+.tooltip-section {
+  margin-bottom: 12px;
+}
+
+.tooltip-section:last-child {
+  margin-bottom: 0;
+}
+
+.tooltip-section-title {
+  font-weight: 600;
+  color: #495057;
+  margin-bottom: 6px;
+  padding-bottom: 4px;
+  border-bottom: 2px solid #e9ecef;
+  font-size: 13px;
+}
+
+.tooltip-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.tooltip-list li {
+  padding: 6px 8px;
+  border-bottom: 1px solid #f8f9fa;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background-color 0.2s;
+}
+
+.tooltip-list li:hover {
+  background-color: #f8f9fa;
+}
+
+.tooltip-list li:last-child {
+  border-bottom: none;
+}
+
+.tooltip-more {
+  color: #6c757d;
+  font-style: italic;
+  font-size: 12px;
+}
+
+.tooltip-badge {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-weight: 600;
+  margin-left: 5px;
+}
+
+.tooltip-badge.done {
+  background-color: #28a745;
+  color: white;
+}
+
+.tooltip-footer {
+  background: #f8f9fa;
+  padding: 8px 15px;
+  text-align: center;
+  font-size: 12px;
+  color: #6c757d;
+  border-radius: 0 0 8px 8px;
+  border-top: 1px solid #e9ecef;
+}
+
+.tooltip-loading,
+.tooltip-error,
+.tooltip-empty {
+  padding: 20px;
+  text-align: center;
+  color: #6c757d;
+}
+
+.tooltip-error {
+  color: #dc3545;
+}
+
+/* 悬浮窗滚动条样式 */
+.tooltip-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.tooltip-body::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.tooltip-body::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 3px;
+}
+
+.tooltip-body::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}

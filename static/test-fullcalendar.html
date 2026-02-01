@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>FullCalendar Test</title>
+    <!-- FullCalendar global bundle 包含内联样式，不需要单独的 CSS -->
+    <script src="/static/fullcalendar/fullcalendar.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        #test-result { margin: 20px 0; padding: 10px; border: 1px solid #ddd; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <h1>FullCalendar 加载测试</h1>
+    <div id="test-result">检测中...</div>
+    <div id="calendar" style="max-width: 900px; margin: 20px 0;"></div>
+    
+    <script>
+        window.addEventListener('load', function() {
+            const resultDiv = document.getElementById('test-result');
+            
+            if (typeof window.FullCalendar !== 'undefined') {
+                resultDiv.className = 'success';
+                resultDiv.innerHTML = '✓ FullCalendar 加载成功！';
+                
+                // 尝试初始化日历
+                try {
+                    const calendarEl = document.getElementById('calendar');
+                    const calendar = new FullCalendar.Calendar(calendarEl, {
+                        initialView: 'dayGridMonth',
+                        locale: 'zh-cn',
+                        headerToolbar: {
+                            left: 'prev,next today',
+                            center: 'title',
+                            right: 'dayGridMonth'
+                        }
+                    });
+                    calendar.render();
+                    resultDiv.innerHTML += '<br>✓ 日历渲染成功！样式已自动注入。';
+                } catch (e) {
+                    resultDiv.className = 'error';
+                    resultDiv.innerHTML += '<br>✗ 日历渲染失败: ' + e.message;
+                }
+            } else {
+                resultDiv.className = 'error';
+                resultDiv.innerHTML = '✗ FullCalendar 未加载。请检查文件路径。';
+            }
+        });
+    </script>
+</body>
+</html>

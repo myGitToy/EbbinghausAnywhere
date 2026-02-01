@@ -1,0 +1,308 @@
+<style>
+body {
+    display: flex;
+    flex-direction: column;
+    background-color: #f8f9fa; /* 确保背景颜色一致 */
+    min-height: 100vh; /* 页面高度至少为视口高度 */
+}
+main {
+    flex-grow: 1; /* 主体内容区域可扩展，填充剩余空间 */
+}
+.footer {
+    background-color: #f8f9fa; /* 确保背景颜色一致 */
+    padding: 10px 0;
+}
+
+
+.toast-container .toast {
+    opacity: 1;
+    margin-top: 10px;
+}
+@media (max-width: 768px) {
+    header {
+        background-image: none;
+        height: auto;
+    }
+    .card {
+        width: 90%;
+    }
+}
+/* 默认样式 */
+.masthead-title {
+    font-size: 4vw;
+    line-height: 1.2;
+    /* color: #fff; */
+    /* text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.7); */
+}
+.masthead-subtitle {
+    font-size: 2vw;
+    line-height: 1.5;
+    /* color: #ddd; */
+}
+
+/* 针对平板设备的优化 */
+@media (max-width: 768px) {
+    .masthead-title {
+        font-size: 6vw;
+        line-height: 1.3;
+    }
+    .masthead-subtitle {
+        font-size: 3.5vw;
+        line-height: 1.6;
+    }
+}
+
+/* 针对手机设备的进一步优化 */
+@media (max-width: 480px) {
+    .masthead-title {
+        font-size: 7vw;
+        line-height: 1.4;
+    }
+    .masthead-subtitle {
+        font-size: 4.5vw;
+        line-height: 1.7;
+    }
+}
+
+@media (max-width: 768px) {
+    .masthead {
+        padding: 1rem 0;
+        height: 70vh;
+        min-height: 300px;
+    }
+    h1 {
+        font-size: 4rem;
+        margin-bottom: 0.5rem;
+    }
+    h3 {
+        font-size: 4rem;
+    }
+    .btn {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.875rem;
+    }
+    .container {
+        padding: 0 0.5rem;
+    }
+    footer.footer {
+        padding: 0.5rem 0;
+        font-size: 0.75rem;
+    }
+    footer .list-inline {
+        margin-bottom: 0;
+    }
+    .social-link {
+        display: none;
+    }
+}
+/* 默认字体样式 */
+.service-title {
+    font-size: 1.8vw;
+    text-align: center;
+}
+.service-text {
+    font-size: 1vw;
+    text-align: center;
+}
+
+/* 小屏幕优化 */
+@media (max-width: 768px) {
+    .service-title {
+        font-size: 4vw; /* 增大标题字体 */
+    }
+    .service-text {
+        font-size: 3vw; /* 增大段落字体 */
+    }
+}
+
+/* 超小屏幕进一步优化 */
+@media (max-width: 480px) {
+    .service-title {
+        font-size: 5vw; /* 进一步增大标题字体 */
+    }
+    .service-text {
+        font-size: 4vw; /* 进一步增大段落字体 */
+    }
+}
+.table-transparent {
+    background-color: transparent; /* 设置背景颜色为透明 */
+    color: inherit; /* 继承文字颜色 */
+    border-collapse: collapse; /* 合并边框 */
+  }
+
+
+  .back-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 4rem;
+      height: 4rem;
+      border-radius: 50%;
+      font-size: 2rem;
+      text-decoration: none;
+      margin: 1rem;
+      transition: all 0.3s ease-in-out;
+  }
+
+  .back-btn i {
+      transition: transform 0.3s ease-in-out;
+  }
+
+  /* 蓝色背景的样式 */
+  .blue-bg {
+      background-color: #1d809f;
+      color: #fff;
+  }
+
+  .blue-bg:hover {
+      background-color: #eab10e;
+      color: #1d809f;
+  }
+
+  .blue-bg:hover i {
+      transform: translateX(-3px);
+  }
+
+  /* 黄色背景的样式 */
+  .yellow-bg {
+      background-color: #eab10e;
+      color: #fff;
+  }
+
+  .yellow-bg:hover {
+      background-color: #fff;
+      color: #1d809f;
+  }
+
+  .yellow-bg:hover i {
+      transform: translateX(-3px);
+  }
+
+  /* 白色背景的样式 */
+  .white-bg {
+      background-color: #fff;
+      color: #1d809f;
+  }
+
+  .white-bg:hover {
+      background-color: #1d809f;
+      color: #eab10e;
+  }
+
+  .white-bg:hover i {
+      transform: translateX(-3px);
+  }
+
+/* Section background color */
+#category-stats {
+    background-color: #f8f9fa;
+}
+
+/* List item styling */
+.category-item {
+    font-size: 1.2rem;
+}
+
+/* Category name styling */
+.category-name {
+    font-weight: bold;
+}
+
+/* Badge styling */
+.category-badge {
+    font-size: 1.1rem;
+    padding: 0.6rem 1rem;
+    background-color: #007bff; /* Primary color */
+    color: #ffffff;           /* White text */
+    border-radius: 0.5rem;
+}
+/* 确保嵌入内容的卡片与父容器卡片一致 */
+.container.py-0 {
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.card-body.p-0 {
+    padding: 0;
+}
+.card {
+    /*background-color: rgba(0, 0, 0, 0.9); /*提升透明度*/
+    /*color: #fff;*/
+    width: 100%;  /* 保证卡片宽度继承 */
+}
+
+
+.card-header {
+    padding: 1rem; /* 可调整 */
+}
+
+/* Item Detail 页面自定义样式 */
+.content-block {
+    border-radius: 0.25rem;
+    line-height: 1.8;
+}
+
+.info-label {
+    font-weight: 600;
+    color: #495057;
+}
+
+.card-header.bg-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+}
+
+.btn-outline-light:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-color: #fff;
+}
+
+.btn-outline-danger {
+    border-color: rgba(255, 255, 255, 0.5);
+    color: #fff;
+}
+
+.btn-outline-danger:hover {
+    background-color: #dc3545;
+    border-color: #dc3545;
+}
+
+/* 音频播放按钮悬停效果 */
+.btn-primary.rounded-circle:hover {
+    transform: scale(1.1);
+    transition: transform 0.2s ease;
+}
+
+/* 返回按钮悬停效果 */
+a.btn.rounded-circle:hover {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important;
+    transform: scale(1.05);
+    transition: all 0.3s ease;
+}
+
+/* 折叠按钮动画 */
+.btn-outline-secondary:hover {
+    background-color: #6c757d;
+    color: #fff;
+}
+
+/* Badge样式优化 */
+.badge {
+    font-weight: 500;
+    padding: 0.4em 0.8em;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+    .card-header h4 {
+        font-size: 1.2rem;
+    }
+    
+    .card-body {
+        padding: 1.5rem !important;
+    }
+    
+    .content-block {
+        padding: 1rem !important;
+    }
+}
+</style>

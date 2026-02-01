@@ -46,6 +46,10 @@ urlpatterns = [
     path('import_user_data/', views.import_items_from_excel, name='import_user_data'),
     path('about/', views.about, name='about'),  # 关于页面
     path('readme/', views.readme_view, name='readme'),
+    # Calendar page and APIs
+    path('calendar/', views.calendar_month_view, name='calendar-month'),
+    path('api/calendar-events/', views.calendar_events_api, name='calendar-events-api'),
+    path('api/calendar-day-items/', views.calendar_day_items_api, name='calendar-day-items-api'),
     
     # DeepSeek API 相关路由
     path('deepseek/config/', views.deepseek_config_view, name='deepseek-config'),

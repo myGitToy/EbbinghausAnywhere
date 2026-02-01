@@ -138,6 +138,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         usPhoneticField.value = queryData.us_phonetic;
                     }
                     
+                    // 填充TTS音频链接（使用Google TTS）
+                    const srcTtsField = document.querySelector('input[name="src_tts"]');
+                    if (srcTtsField) {
+                        srcTtsField.value = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=en&q=${encodeURIComponent(word)}`;
+                    }
+                    
                     // 构建内容（释义 + 例句）
                     let content = '';
                     
@@ -162,8 +168,19 @@ document.addEventListener('DOMContentLoaded', function() {
                         contentField.value = content;
                     }
                     
-                    // 成功提示
-                    alert('✅ DeepSeek 数据已成功导入！\n\n已填充：\n- 音标\n- 释义\n- 例句\n\n请检查并保存。');
+                    // 显示简短的成功提示（不需要用户确认）
+                    loadingAlert.classList.remove('d-none');
+                    loadingAlert.classList.remove('alert-warning');
+                    loadingAlert.classList.add('alert-success');
+                    loadingAlert.innerHTML = '<i class="fa fa-check-circle me-2"></i>✅ 已成功导入音标、释义、例句和音频！';
+                    
+                    // 3秒后自动隐藏提示
+                    setTimeout(() => {
+                        loadingAlert.classList.add('d-none');
+                        loadingAlert.classList.remove('alert-success');
+                        loadingAlert.classList.add('alert-warning');
+                        loadingAlert.innerHTML = '<i class="fa fa-spinner fa-spin me-2"></i>正在查询 DeepSeek API，请稍候...';
+                    }, 3000);
                     
                 } else {
                     alert('❌ 查询失败：' + (data.error || '未知错误'));

@@ -134,12 +134,22 @@
                                                             {% endif %}
                                                         </td>
                                                         <td>
-                                                            {% if row.familiar == True %}
-                                                                <span class="text-success">熟悉</span>
-                                                            {% elif row.familiar == False %}
-                                                                <span class="text-danger">不熟悉</span>
+                                                            {% if row.unfamiliar_records and row.unfamiliar_records|length > 0 %}
+                                                                <span class="text-danger">不熟悉 ({{ row.unfamiliar_records|length }})</span>
+                                                                <br/>
+                                                                <small class="text-muted">
+                                                                    {% for rec in row.unfamiliar_records %}
+                                                                        {{ rec.date }}{% if not forloop.last %}, {% endif %}
+                                                                    {% endfor %}
+                                                                </small>
                                                             {% else %}
-                                                                -
+                                                                {% if row.familiar == True %}
+                                                                    <span class="text-success">熟悉</span>
+                                                                {% elif row.familiar == False %}
+                                                                    <span class="text-danger">不熟悉</span>
+                                                                {% else %}
+                                                                    -
+                                                                {% endif %}
                                                             {% endif %}
                                                         </td>
                                                     </tr>

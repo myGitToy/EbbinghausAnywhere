@@ -276,6 +276,53 @@ class ItemDetailView(DetailView):
             return render(self.request, 'EAW/item_not_found.html', status=404)
         return obj
 
+
+@method_decorator(login_required, name='dispatch')
+class ItemUpdateView(generic.UpdateView):
+    model = Item
+    template_name = 'item_form.html'
+    fields = ['item', 'content', 'category', 'uk_phonetic', 'us_phonetic', 'src_tts', 'inputDate', 'initDate', 'proficiency']
+    
+    def get_queryset(self):
+        # 只允许用户编辑自己的Item
+        return Item.objects.filter(user=self.request.user)
+    
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
+        # 限制category只显示当前用户的类别
+        form.fields['category'].queryset = Category.objects.filter(user=self.request.user)
+        # 添加Bootstrap样式
+        for field_name, field in form.fields.items():
+            if field.widget.__class__.__name__ != 'CheckboxInput':
+                field.widget.attrs['class'] = 'form-control'
+        return form
+    
+    def form_valid(self, form):
+        messages.success(self.request, f'单词 "{form.instance.item}" 已成功更新！')
+        return super().form_valid(form)
+    
+    def get_success_url(self):
+        return reverse('item-detail', kwargs={'pk': self.object.pk})
+
+
+@method_decorator(login_required, name='dispatch')
+class ItemDeleteView(generic.DeleteView):
+    model = Item
+    template_name = 'item_confirm_delete.html'
+    
+    def get_queryset(self):
+        # 只允许用户删除自己的Item
+        return Item.objects.filter(user=self.request.user)
+    
+    def delete(self, request, *args, **kwargs):
+        item = self.get_object()
+        messages.success(request, f'单词 "{item.item}" 已成功删除！')
+        return super().delete(request, *args, **kwargs)
+    
+    def get_success_url(self):
+        return reverse('item-list')
+
+
 @login_required
 def SearchView(request):
     word = ''

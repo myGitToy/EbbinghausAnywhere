@@ -10,13 +10,13 @@
                     <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                         <h4 class="mb-0">
                             <i class="fa fa-book me-2"></i>
-                            <a href="/admin/EAW/item/{{ object.id }}/change/" class="text-white text-decoration-none">{{ object.item }}</a>
+                            <span>{{ object.item }}</span>
                         </h4>
                         <div>
-                            <a href="/admin/EAW/item/{{ object.id }}/change/" class="btn btn-sm btn-outline-light me-2" title="编辑">
+                            <a href="{% url 'item-edit' object.pk %}" class="btn btn-sm btn-outline-light me-2" title="编辑">
                                 <i class="fa fa-edit"></i>
                             </a>
-                            <a href="/admin/EAW/item/{{ object.id }}/delete/" class="btn btn-sm btn-outline-danger" title="删除" onclick="return confirm('确定要删除这个项目吗？');">
+                            <a href="{% url 'item-delete' object.pk %}" class="btn btn-sm btn-outline-danger" title="删除">
                                 <i class="fa fa-trash"></i>
                             </a>
                         </div>

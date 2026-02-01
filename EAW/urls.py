@@ -25,6 +25,8 @@ urlpatterns = [
     path('accounts/register/', views.register, name='register'),
     path('list/', views.item_list, name='item-list'),
     path('item/<int:pk>/', ItemDetailView.as_view(), name='item-detail'),
+    path('item/<int:pk>/edit/', views.ItemUpdateView.as_view(), name='item-edit'),
+    path('item/<int:pk>/delete/', views.ItemDeleteView.as_view(), name='item-delete'),
     path('search/', views.SearchView, name='search'),  # 注册搜索页面的路由
     # 路由：显示选择日期的页面
     path('review/', views.ReviewHomeView, name='review-home'),    

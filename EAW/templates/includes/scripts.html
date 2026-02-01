@@ -20,9 +20,19 @@
 <script src="{% static 'bootstrap/js/bootstrap.bundle.min.js' %}"></script>
 
     <script>
-    // 等待页面加载完成后渲染 MathJax
+    // 等待页面加载完成后渲染 MathJax（兼容 typesetPromise 和 typeset）
     document.addEventListener("DOMContentLoaded", function () {
-        MathJax.typeset();
+        try {
+            if (window.MathJax) {
+                if (typeof MathJax.typesetPromise === 'function') {
+                    MathJax.typesetPromise();
+                } else if (typeof MathJax.typeset === 'function') {
+                    MathJax.typeset();
+                }
+            }
+        } catch (e) {
+            console.warn('MathJax render failed', e);
+        }
     });
 </script>
 <script src="{% static 'js/stylish-portfolio.js' %}"></script>

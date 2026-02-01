@@ -449,10 +449,12 @@ def ReviewHomeView(request):
 
 # Calendar views and APIs (FullCalendar integration)
 @login_required
+@login_required
 def calendar_month_view(request):
     """渲染日历页面（前端使用 FullCalendar 拉取事件）。"""
-    today = datetime.today().date()
-    return render(request, 'calendar_month.html', {'today': today})
+    return render(request, 'calendar_month.html', {
+        'today': datetime.today().date()
+    })
 
 
 @login_required
@@ -461,32 +463,58 @@ def calendar_events_api(request):
     try:
         start = request.GET.get('start')
         end = request.GET.get('end')
-        if start:
-            start_date = datetime.fromisoformat(start).date()
-        else:
-            start_date = datetime.today().date() - timedelta(days=15)
-        if end:
-            end_date = datetime.fromisoformat(end).date()
-        else:
-            end_date = datetime.today().date() + timedelta(days=15)
+        
+        # 添加日志
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"Calendar API called: start={start}, end={end}, user={request.user}")
+        
+        def parse_date_safe(s, default):
+            if not s:
+                return default
+            try:
+                return datetime.fromisoformat(s).date()
+            except Exception:
+                try:
+                    # fallback: take first 10 chars (YYYY-MM-DD)
+                    return datetime.fromisoformat(s[:10]).date()
+                except Exception:
+                    return default
+
+        start_date = parse_date_safe(start, datetime.today().date() - timedelta(days=30))
+        end_date = parse_date_safe(end, datetime.today().date() + timedelta(days=30))
+        
+        logger.info(f"Parsed dates: start_date={start_date}, end_date={end_date}")
 
         days = (end_date - start_date).days
         events = []
 
+        from django.db.models import Q
+        
         for i in range(days + 1):
             d = start_date + timedelta(days=i)
-            # 与 ReviewView 一致的查询逻辑：正式复习日到了 或 额外复习期内
-            from django.db.models import Q
-            review_items = Item.objects.filter(user=request.user).filter(
-                Q(next_review_date__lte=d) | Q(needs_extra_review=True, extra_review_since__lte=d, next_review_date__gt=d)
+            
+            # 分别查询：今日计划、额外复习（不再统计逾期）
+            # 1. 今日计划：next_review_date 正好是今天
+            today_planned = Item.objects.filter(
+                user=request.user,
+                next_review_date=d
+            )
+            
+            # 2. 额外复习：需要额外复习且在复习期内
+            extra_review = Item.objects.filter(
+                user=request.user
+            ).filter(
+                Q(needs_extra_review=True, extra_review_since__lte=d, next_review_date__gt=d) |
+                Q(next_review_date__isnull=True, needs_extra_review=True, extra_review_since__lte=d)
             )
 
-            total = review_items.count()
-
-            # 统计已点评（当天有 unfamiliar_history 记录）的数量和逾期数量
-            completed = 0
-            overdue = 0
-            for it in review_items:
+            # 统计今日计划的完成情况
+            today_total = today_planned.count()
+            today_completed = 0
+            today_pending = 0
+            
+            for it in today_planned:
                 reviewed = False
                 try:
                     uh = it.unfamiliar_history or []
@@ -495,31 +523,63 @@ def calendar_events_api(request):
                             reviewed = True
                             break
                 except Exception:
-                    reviewed = False
-
+                    pass
+                
                 if reviewed:
-                    completed += 1
+                    today_completed += 1
+                else:
+                    today_pending += 1
+            
+            # 统计额外复习的
+            extra_count = extra_review.count()
+            
+            # 只有当天有计划或额外复习时才显示
+            if today_total == 0 and extra_count == 0:
+                continue
 
-                if it.next_review_date and it.next_review_date < d and not reviewed:
-                    overdue += 1
+            # 构建标题：主要显示今日计划
+            title_parts = []
+            if today_pending > 0:
+                title_parts.append(f"今日: {today_pending}待")
+            if today_completed > 0:
+                title_parts.append(f"{today_completed}已完成")
+            if extra_count > 0:
+                title_parts.append(f"额外: {extra_count}")
+            
+            title = " · ".join(title_parts) if title_parts else "无待办"
 
-            pending = max(0, total - completed)
-
-            title = f"{pending} 待 · {completed} 已"
-
+            # 确定事件颜色
+            if today_pending == 0 and extra_count == 0:
+                color = '#28a745'  # 绿色：全部完成
+            elif today_pending > 0:
+                color = '#ffc107'  # 黄色：有今日待办
+            else:
+                color = '#007bff'  # 蓝色：其他情况
+            
             events.append({
                 'id': d.isoformat(),
                 'title': title,
                 'start': d.isoformat(),
                 'allDay': True,
-                'pending': pending,
-                'completed': completed,
-                'overdue': overdue,
+                'backgroundColor': color,
+                'borderColor': color,
+                'extendedProps': {
+                    'today_planned': today_total,
+                    'today_pending': today_pending,
+                    'today_completed': today_completed,
+                    'extra': extra_count
+                }
             })
 
+        logger.info(f"Returning {len(events)} events")
         return JsonResponse(events, safe=False)
 
     except Exception as e:
+        import traceback
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Calendar API error: {str(e)}")
+        traceback.print_exc()
         return JsonResponse({'error': str(e)}, status=500)
 
 
@@ -529,21 +589,34 @@ def calendar_day_items_api(request):
     try:
         date_str = request.GET.get('date')
         if not date_str:
-            return JsonResponse({'error': 'Missing date parameter'}, status=400)
-        d = datetime.fromisoformat(date_str).date()
+            return JsonResponse({'error': '缺少日期参数'}, status=400)
+        
+        try:
+            d = datetime.fromisoformat(date_str).date()
+        except Exception:
+            try:
+                d = datetime.fromisoformat(date_str[:10]).date()
+            except Exception:
+                return JsonResponse({'error': '无效的日期格式'}, status=400)
 
         from django.db.models import Q
+        
+        # 只查询今日计划和额外复习，不包括逾期
         review_items = Item.objects.filter(user=request.user).filter(
-            Q(next_review_date__lte=d) | Q(needs_extra_review=True, extra_review_since__lte=d, next_review_date__gt=d)
-        )
+            Q(next_review_date=d) |
+            Q(needs_extra_review=True, extra_review_since__lte=d, next_review_date__gt=d) |
+            Q(next_review_date__isnull=True, needs_extra_review=True, extra_review_since__lte=d)
+        ).order_by('next_review_date', 'item')
 
         items = []
+        intervals = [0, 1, 2, 4, 7, 15, 30, 90, 180]
+        
         for it in review_items:
             try:
                 uh = it.unfamiliar_history or []
                 reviewed_today = any(r.get('date') == d.isoformat() for r in uh)
-                # 统计当前周期不熟悉次数（兼容索引或天数）
-                intervals = [0,1,2,4,7,15,30,90,180]
+                
+                # 统计当前周期不熟悉次数
                 if it.current_interval in intervals:
                     cur_day = it.current_interval
                     try:
@@ -558,10 +631,22 @@ def calendar_day_items_api(request):
                         cur_idx = None
                         cur_day = it.current_interval
 
-                unfamiliar_count = sum(1 for r in (uh or []) if r.get('interval') == cur_day or r.get('interval') == cur_idx)
+                unfamiliar_count = sum(
+                    1 for r in uh 
+                    if r.get('interval') == cur_day or r.get('interval') == cur_idx
+                )
+                
             except Exception:
                 reviewed_today = False
                 unfamiliar_count = 0
+            
+            # 判断是否为额外复习
+            is_extra = (
+                it.needs_extra_review and 
+                it.extra_review_since and 
+                it.extra_review_since <= d and 
+                (not it.next_review_date or it.next_review_date > d)
+            )
 
             items.append({
                 'id': it.id,
@@ -570,12 +655,19 @@ def calendar_day_items_api(request):
                 'next_review_date': it.next_review_date.isoformat() if it.next_review_date else None,
                 'unfamiliar_count': unfamiliar_count,
                 'reviewed_today': reviewed_today,
+                'is_extra_review': is_extra,
                 'detail_url': reverse('item-detail', args=[it.pk])
             })
 
-        return JsonResponse({'date': d.isoformat(), 'items': items})
+        return JsonResponse({
+            'date': d.isoformat(),
+            'total': len(items),
+            'items': items
+        })
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return JsonResponse({'error': str(e)}, status=500)
 
 @login_required

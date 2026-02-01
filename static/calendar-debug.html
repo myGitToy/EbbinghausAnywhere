@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Calendar Debug Test</title>
+    <script src="/static/fullcalendar/fullcalendar.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        #status { margin: 20px 0; padding: 10px; border: 1px solid #ddd; }
+        #test-calendar { max-width: 900px; margin: 20px auto; min-height: 600px; border: 2px solid red; }
+    </style>
+</head>
+<body>
+    <h1>FullCalendar 调试测试</h1>
+    <div id="status">检测中...</div>
+    <div id="test-calendar"></div>
+    
+    <script>
+        const statusDiv = document.getElementById('status');
+        const calendarEl = document.getElementById('test-calendar');
+        
+        statusDiv.innerHTML = '<p>FullCalendar: ' + (typeof FullCalendar !== 'undefined' ? '✓ 已加载' : '✗ 未加载') + '</p>';
+        
+        if (typeof FullCalendar !== 'undefined') {
+            try {
+                const calendar = new FullCalendar.Calendar(calendarEl, {
+                    initialView: 'dayGridMonth',
+                    locale: 'zh-cn',
+                    headerToolbar: {
+                        left: 'prev,next today',
+                        center: 'title',
+                        right: 'dayGridMonth'
+                    },
+                    events: [
+                        { title: '测试事件1', start: '2026-02-01' },
+                        { title: '测试事件2', start: '2026-02-05' },
+                        { title: '测试事件3', start: '2026-02-10' }
+                    ]
+                });
+                
+                calendar.render();
+                statusDiv.innerHTML += '<p>✓ 日历渲染成功！</p>';
+                statusDiv.innerHTML += '<p>容器高度: ' + calendarEl.offsetHeight + 'px</p>';
+                statusDiv.innerHTML += '<p>容器宽度: ' + calendarEl.offsetWidth + 'px</p>';
+                
+                setTimeout(() => {
+                    calendar.updateSize();
+                    statusDiv.innerHTML += '<p>✓ 大小已更新</p>';
+                }, 100);
+                
+            } catch (e) {
+                statusDiv.innerHTML += '<p style="color: red;">✗ 渲染失败: ' + e.message + '</p>';
+                console.error(e);
+            }
+        }
+    </script>
+</body>
+</html>

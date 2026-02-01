@@ -110,3 +110,34 @@ class ReviewDay(models.Model):
     class Meta:
         unique_together = ('user', 'day')  # 确保每个用户的复习曲线不重复
         ordering = ['day']  # 默认按复习时间从小到大排序
+
+
+class DeepSeekConfig(models.Model):
+    """DeepSeek API 配置模型，每个用户一个配置"""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, editable=False)
+    model = models.CharField(
+        max_length=50,
+        default='deepseek-chat',
+        help_text="DeepSeek 模型名称"
+    )
+    temperature = models.FloatField(
+        default=1.0,
+        help_text="生成温度 (0.0-2.0)，数据抽取建议1.0，翻译建议1.3，创意写作建议1.5"
+    )
+    system_prompt = models.TextField(
+        default='你是英语词典助手。输入：英文单词。输出：JSON格式包含uk_phonetic(英音标)、us_phonetic(美音标)、meaning(中文释义)、example_sentences(2-3个例句数组，每个包含english和chinese字段)。目标用户：小学5年级。严格按照JSON格式输出，不要添加任何其他文字或markdown代码块标记。',
+        help_text="系统提示词，定义 DeepSeek 的行为和输出格式"
+    )
+    is_active = models.BooleanField(
+        default=True,
+        help_text="是否启用 DeepSeek API"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"DeepSeek Config for {self.user.username}"
+
+    class Meta:
+        verbose_name = "DeepSeek Configuration"
+        verbose_name_plural = "DeepSeek Configurations"

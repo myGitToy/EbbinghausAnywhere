@@ -1,5 +1,5 @@
 from django import forms
-from .models import Category, Item, ReviewDay
+from .models import Category, Item, ReviewDay, DeepSeekConfig
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.forms import PasswordChangeForm
 from django.core.exceptions import ValidationError
@@ -199,3 +199,65 @@ class CustomPasswordChangeForm(PasswordChangeForm):
             'placeholder': 'Confirm new password',
         })
     )
+
+
+class DeepSeekConfigForm(forms.ModelForm):
+    """DeepSeek API 配置表单"""
+    
+    # 温度场景选择（可选）
+    TEMPERATURE_CHOICES = [
+        (0.0, '代码生成/数学解题 (0.0)'),
+        (1.0, '数据抽取/分析 (1.0)'),
+        (1.3, '通用对话/翻译 (1.3)'),
+        (1.5, '创意写作/诗歌 (1.5)'),
+    ]
+    
+    temperature_preset = forms.ChoiceField(
+        choices=TEMPERATURE_CHOICES,
+        required=False,
+        label='温度预设场景',
+        help_text='选择常用场景自动设置温度，或手动输入自定义值',
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    
+    class Meta:
+        model = DeepSeekConfig
+        fields = ['model', 'temperature', 'system_prompt', 'is_active']
+        widgets = {
+            'model': forms.Select(
+                choices=[('deepseek-chat', 'deepseek-chat')],
+                attrs={'class': 'form-control'}
+            ),
+            'temperature': forms.NumberInput(
+                attrs={
+                    'class': 'form-control',
+                    'min': '0.0',
+                    'max': '2.0',
+                    'step': '0.1',
+                    'placeholder': '0.0 - 2.0'
+                }
+            ),
+            'system_prompt': forms.Textarea(
+                attrs={
+                    'class': 'form-control',
+                    'rows': 5,
+                    'placeholder': '输入系统提示词...'
+                }
+            ),
+            'is_active': forms.CheckboxInput(
+                attrs={'class': 'form-check-input'}
+            ),
+        }
+        labels = {
+            'model': '模型选择',
+            'temperature': '温度参数',
+            'system_prompt': '系统提示词',
+            'is_active': '启用 DeepSeek API',
+        }
+    
+    def clean_temperature(self):
+        """验证温度范围"""
+        temperature = self.cleaned_data.get('temperature')
+        if temperature is not None and (temperature < 0.0 or temperature > 2.0):
+            raise ValidationError('温度参数必须在 0.0 到 2.0 之间')
+        return temperature

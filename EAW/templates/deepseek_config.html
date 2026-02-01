@@ -1,0 +1,145 @@
+{% extends "base_generic.html" %}
+
+{% block title %}DeepSeek API 配置{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0"><i class="fa fa-cog"></i> DeepSeek API 配置</h3>
+                </div>
+                <div class="card-body">
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    <form method="post" id="deepseek-config-form">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.model.id_for_label }}" class="form-label">{{ form.model.label }}</label>
+                            {{ form.model }}
+                            {% if form.model.help_text %}
+                                <div class="form-text">{{ form.model.help_text }}</div>
+                            {% endif %}
+                            {% if form.model.errors %}
+                                <div class="invalid-feedback d-block">{{ form.model.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.temperature_preset.id_for_label }}" class="form-label">{{ form.temperature_preset.label }}</label>
+                            {{ form.temperature_preset }}
+                            {% if form.temperature_preset.help_text %}
+                                <div class="form-text">{{ form.temperature_preset.help_text }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.temperature.id_for_label }}" class="form-label">{{ form.temperature.label }}</label>
+                            {{ form.temperature }}
+                            {% if form.temperature.help_text %}
+                                <div class="form-text">{{ form.temperature.help_text }}</div>
+                            {% endif %}
+                            {% if form.temperature.errors %}
+                                <div class="invalid-feedback d-block">{{ form.temperature.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.system_prompt.id_for_label }}" class="form-label">{{ form.system_prompt.label }}</label>
+                            {{ form.system_prompt }}
+                            {% if form.system_prompt.help_text %}
+                                <div class="form-text">{{ form.system_prompt.help_text }}</div>
+                            {% endif %}
+                            {% if form.system_prompt.errors %}
+                                <div class="invalid-feedback d-block">{{ form.system_prompt.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3 form-check">
+                            {{ form.is_active }}
+                            <label class="form-check-label" for="{{ form.is_active.id_for_label }}">
+                                {{ form.is_active.label }}
+                            </label>
+                            {% if form.is_active.help_text %}
+                                <div class="form-text">{{ form.is_active.help_text }}</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fa fa-save"></i> 保存配置
+                            </button>
+                            <a href="{% url 'home' %}" class="btn btn-secondary">
+                                <i class="fa fa-arrow-left"></i> 返回首页
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- API 状态检查 -->
+            <div class="card shadow mt-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="fa fa-info-circle"></i> API 状态</h5>
+                </div>
+                <div class="card-body">
+                    <div id="api-status-loading" class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">检查中...</span>
+                        </div>
+                        <p class="mt-2">正在检查 API 配置...</p>
+                    </div>
+                    <div id="api-status-result" class="d-none">
+                        <div id="api-configured" class="alert alert-success d-none" role="alert">
+                            <i class="fa fa-check-circle"></i> API Key 已配置，可以使用 DeepSeek 服务
+                        </div>
+                        <div id="api-not-configured" class="alert alert-warning d-none" role="alert">
+                            <i class="fa fa-exclamation-triangle"></i> API Key 未配置，请在 .env 文件中添加 DEEPSEEK_API_KEY
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 温度预设自动填充
+document.getElementById('{{ form.temperature_preset.id_for_label }}').addEventListener('change', function() {
+    const temperature = parseFloat(this.value);
+    if (!isNaN(temperature)) {
+        document.getElementById('{{ form.temperature.id_for_label }}').value = temperature;
+    }
+});
+
+// 检查 API 配置状态
+document.addEventListener('DOMContentLoaded', function() {
+    fetch("{% url 'check-deepseek-keys' %}")
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('api-status-loading').classList.add('d-none');
+            document.getElementById('api-status-result').classList.remove('d-none');
+            
+            if (data.configured) {
+                document.getElementById('api-configured').classList.remove('d-none');
+            } else {
+                document.getElementById('api-not-configured').classList.remove('d-none');
+            }
+        })
+        .catch(error => {
+            console.error('Error checking API status:', error);
+            document.getElementById('api-status-loading').innerHTML = 
+                '<div class="alert alert-danger">检查 API 状态失败</div>';
+        });
+});
+</script>
+{% endblock %}

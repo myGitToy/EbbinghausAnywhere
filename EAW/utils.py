@@ -2,6 +2,7 @@
 
 import difflib
 from .translate import baidu_translate
+from .deepseek import deepseek_translate
 
 def clean_and_split_lines(content):
     """
@@ -44,6 +45,43 @@ def fetch_and_merge_translation(item_name, existing_content):
         return existing_content, "", "", ""  # 返回现有内容和空值，表示翻译失败
 
     # 解析翻译结果
+    parts_and_means = translation_result.get('parts_and_means', [])
+    simple_meaning = translation_result.get('simple_meaning', [])
+    src_tts = translation_result.get('src_tts', '')
+    phonetic = translation_result.get('phonetic', [])
+    phonetic_am = phonetic[1] if len(phonetic) > 1 else None
+    phonetic_en = phonetic[0] if len(phonetic) > 0 else None
+
+    # 获取新旧内容
+    new_content = "\n".join(parts_and_means if parts_and_means else simple_meaning)
+    existing_lines = clean_and_split_lines(existing_content)
+    new_lines = clean_and_split_lines(new_content)
+
+    # 逐行比较并合并
+    updated_lines = compare_and_merge(existing_lines, new_lines, threshold=0.8)
+
+    # 合并后的内容
+    updated_content = "\n".join(updated_lines)
+
+    return updated_content, src_tts, phonetic_am, phonetic_en
+
+
+def fetch_and_merge_deepseek(item_name, existing_content, user=None):
+    """
+    调用 DeepSeek API 获取释义，并将其与现有内容进行合并。
+    返回格式与 fetch_and_merge_translation 完全一致，便于切换使用。
+    
+    :param item_name: 单词名称
+    :param existing_content: 现有内容
+    :param user: 用户实例（用于获取 DeepSeek 配置）
+    :return: (updated_content, src_tts, phonetic_am, phonetic_en)
+    """
+    # 调用 DeepSeek 翻译函数
+    translation_result = deepseek_translate(item_name, user=user)
+    if not translation_result:
+        return existing_content, "", "", ""  # 返回现有内容和空值，表示翻译失败
+
+    # 解析翻译结果（格式与百度翻译一致）
     parts_and_means = translation_result.get('parts_and_means', [])
     simple_meaning = translation_result.get('simple_meaning', [])
     src_tts = translation_result.get('src_tts', '')

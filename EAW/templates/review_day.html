@@ -4,60 +4,63 @@
             <h5 class="mb-0">{{ reviewdate }} - Review Items</h5>
         </div>
         <div class="card-body p-0">
-            {% for key, value in output.items %}
-            <table class="table table-bordered table-hover mb-4">
+            {% if page_obj %}
+            <!-- Single Table for All Items -->
+            <table class="table table-bordered table-hover mb-0">
                 <thead class="table-info">
                     <tr>
-                        <th style="width: 50%;">{{ key }} ({{ value | length }})</th>
+                        <th style="width: 30%;">Item</th>
+                        <th style="width: 20%;">Category</th>
                         <th style="width: 25%;">Review Cycle</th>
                         <th style="width: 25%;">Mastery</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for word in value %}
-                    <tr id="td{{ word.1.id }}" data-bs-toggle="modal" data-bs-target="#myModal{{ word.1.id }}">
-                        <td>{{ word.1.item }}</td>
-                        <td>Day {{ word.0 }}</td>
-                        <td class="proficiency-cell">{{ word.1.get_proficiency_display }}</td>
+                    {% for review_item in page_obj %}
+                    <tr id="td{{ review_item.item.id }}" data-bs-toggle="modal" data-bs-target="#myModal{{ review_item.item.id }}">
+                        <td>{{ review_item.item.item }}</td>
+                        <td>{{ review_item.category_name }}</td>
+                        <td>Day {{ review_item.interval_day }}</td>
+                        <td class="proficiency-cell">{{ review_item.item.get_proficiency_display }}</td>
                     </tr>
   
                     <!-- Modal -->
-                    <div class="modal fade" id="myModal{{ word.1.id }}" tabindex="-1" aria-labelledby="myModalLabel{{ word.1.id }}" aria-hidden="true">
+                    <div class="modal fade" id="myModal{{ review_item.item.id }}" tabindex="-1" aria-labelledby="myModalLabel{{ review_item.item.id }}" aria-hidden="true">
                         <div class="modal-dialog">
                             <div class="modal-content">
                                 <div class="modal-header">
-                                    <h5 class="modal-title" id="myModalLabel{{ word.1.id }}">
-                                        <a href="/admin/EAW/item/{{ word.1.id }}/change/">{{ word.1.item }}</a>
+                                    <h5 class="modal-title" id="myModalLabel{{ review_item.item.id }}">
+                                        <a href="/admin/EAW/item/{{ review_item.item.id }}/change/">{{ review_item.item.item }}</a>
                                     </h5>
                                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                 </div>
                                 <div class="modal-body">
-                                    <p><strong>Mastery:</strong> {{ word.1.get_proficiency_display }}</p>
-                                    <p><strong>Category:</strong> {{ word.1.category.name }}</p>
-                                    <p><strong>Input Date:</strong> {{ word.1.inputDate }}</p>
-                                    {% if word.1.category.name == "单词" %}
-                                        {% if word.1.us_phonetic %}
-                                            <p><strong>US Phonetic:</strong> /{{ word.1.us_phonetic }}/</p>
+                                    <p><strong>Mastery:</strong> {{ review_item.item.get_proficiency_display }}</p>
+                                    <p><strong>Category:</strong> {{ review_item.item.category.name }}</p>
+                                    <p><strong>Input Date:</strong> {{ review_item.item.inputDate }}</p>
+                                    {% if review_item.item.category.name == "单词" %}
+                                        {% if review_item.item.us_phonetic %}
+                                            <p><strong>US Phonetic:</strong> /{{ review_item.item.us_phonetic }}/</p>
                                         {% endif %}
-                                        {% if word.1.uk_phonetic %}
-                                            <p><strong>UK Phonetic:</strong> /{{ word.1.uk_phonetic }}/</p>
+                                        {% if review_item.item.uk_phonetic %}
+                                            <p><strong>UK Phonetic:</strong> /{{ review_item.item.uk_phonetic }}/</p>
                                         {% endif %}
-                                        {% if word.1.src_tts %}
+                                        {% if review_item.item.src_tts %}
                                             <p><strong>Pronunciation:</strong></p>
                                             <audio controls>
-                                                <source src="{{ word.1.src_tts }}" type="audio/mpeg">
+                                                <source src="{{ review_item.item.src_tts }}" type="audio/mpeg">
                                                 Your browser does not support audio playback.
                                             </audio>
                                         {% endif %}
                                     {% endif %}
                                     {% autoescape off %}
-                                    <p style="white-space: pre-line"><strong>Content:</strong><br>{{ word.1.content|safe }}</p>
+                                    <p style="white-space: pre-line"><strong>Content:</strong><br>{{ review_item.item.content|safe }}</p>
                                     {% endautoescape %}
                                 </div>
                                 <div class="modal-footer">
-                                    <button class="btn btn-success feedback-btn" data-id="{{ word.1.id }}" data-action="yes">YES</button>
-                                    <button class="btn btn-danger feedback-btn" data-id="{{ word.1.id }}" data-action="no">NO</button>
-                                    <button class="btn btn-warning feedback-btn" data-id="{{ word.1.id }}" data-action="reset">RESET</button>
+                                    <button class="btn btn-success feedback-btn" data-id="{{ review_item.item.id }}" data-action="yes">YES</button>
+                                    <button class="btn btn-danger feedback-btn" data-id="{{ review_item.item.id }}" data-action="no">NO</button>
+                                    <button class="btn btn-warning feedback-btn" data-id="{{ review_item.item.id }}" data-action="reset">RESET</button>
                                     <button type="button" class="btn btn-dark" data-bs-dismiss="modal">Close</button>
                                 </div>
                             </div>
@@ -66,8 +69,44 @@
                     {% endfor %}
                 </tbody>
             </table>
-            {% endfor %}
+            {% else %}
+            <!-- Empty State -->
+            <div class="alert alert-info text-center m-4">
+                今日没有需要复习的内容
+            </div>
+            {% endif %}
           </div>
+          
+          <!-- Pagination -->
+          {% if page_obj %}
+          <div class="card-footer bg-white">
+              <nav aria-label="Page navigation">
+                  <ul class="pagination justify-content-center mb-0">
+                      {% if page_obj.has_previous %}
+                      <li class="page-item">
+                          <a class="page-link pagination-link" href="#" data-page="1" aria-label="First">First</a>
+                      </li>
+                      <li class="page-item">
+                          <a class="page-link pagination-link" href="#" data-page="{{ page_obj.previous_page_number }}" aria-label="Previous">Previous</a>
+                      </li>
+                      {% endif %}
+                      <li class="page-item disabled">
+                          <span class="page-link">
+                              Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                          </span>
+                      </li>
+                      {% if page_obj.has_next %}
+                      <li class="page-item">
+                          <a class="page-link pagination-link" href="#" data-page="{{ page_obj.next_page_number }}" aria-label="Next">Next</a>
+                      </li>
+                      <li class="page-item">
+                          <a class="page-link pagination-link" href="#" data-page="{{ page_obj.paginator.num_pages }}" aria-label="Last">Last</a>
+                      </li>
+                      {% endif %}
+                  </ul>
+              </nav>
+          </div>
+          {% endif %}
         </div>
   </div>
 
@@ -127,29 +166,73 @@
       const row = document.getElementById(`td${wordId}`);
       const data = JSON.stringify({ id: wordId, date: '{{ reviewdate }}' });
   
-      // 调试：检查按钮点击事件是否触发
-      // console.log(`Button clicked: ${action} for word ID: ${wordId}`);
-  
       // 发送请求到后端
       postData(feedbackUrls[action], data, (response) => {
         if (response.success) {
           updateRowStyle(row, action, response.mastery); // 更新整行样式和掌握程度
         } else {
-          // console.error("Error:", response.message);
           alert("操作失败：" + response.message); // 提示错误
         }
+      });
+    }
+    
+    // 处理分页链接点击事件
+    function handlePaginationClick(event) {
+      event.preventDefault();
+      const page = event.target.getAttribute('data-page');
+      const reviewDate = document.getElementById('id_review_date').value;
+      const showMastered = document.getElementById('show_mastered').checked;
+      const perPage = document.getElementById('per_page').value;
+      
+      // 构建URL参数
+      const params = new URLSearchParams({
+        show_mastered: showMastered,
+        per_page: perPage,
+        page: page
+      });
+      
+      // 发起 AJAX 请求加载指定页的内容
+      const url = `/review/${reviewDate}?${params.toString()}`;
+      fetch(url, {
+        method: 'GET',
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      })
+      .then(response => {
+        if (response.ok) return response.text();
+        throw new Error('加载分页内容失败');
+      })
+      .then(html => {
+        const reviewContentDiv = document.getElementById('reviewContent');
+        reviewContentDiv.innerHTML = html;
+        
+        // 重新绑定事件
+        bindReviewDayEvents();
+        
+        // 手动触发 MathJax 渲染
+        if (window.MathJax) {
+          MathJax.typeset();
+        }
+        
+        // 滚动到顶部
+        reviewContentDiv.scrollIntoView({ behavior: 'smooth' });
+      })
+      .catch(error => {
+        console.error(error);
+        alert('加载失败，请稍后重试');
       });
     }
   
     // 等 DOM 加载完成后绑定事件
     document.addEventListener('DOMContentLoaded', function () {
-      // console.log('DOM fully loaded and parsed');
-      
       document.querySelectorAll('.feedback-btn').forEach(button => {
         button.addEventListener('click', handleButtonClick);
-        
-        // 调试：检查按钮是否存在并绑定事件
-        // console.log(`Button with ID ${button.getAttribute('data-id')} bound to event`);
+      });
+      
+      // 绑定分页链接
+      document.querySelectorAll('.pagination-link').forEach(link => {
+        link.addEventListener('click', handlePaginationClick);
       });
     });
   </script>

@@ -382,8 +382,6 @@ def ReviewHomeView(request):
 
 @login_required
 def ReviewView(request, year, month, day):
-    #print(f"Request routed to ReviewView with date: {year}-{month}-{day}")  # 调试
-    #print(f"Year: {year}, Month: {month}, Day: {day}")
     # 创建选择的复习日期
     d1 = f"{year}-{month}-{day}"
     reviewDate = datetime.strptime(d1, '%Y-%m-%d').date()
@@ -394,26 +392,54 @@ def ReviewView(request, year, month, day):
         if review_date_str:
             reviewDate = datetime.strptime(review_date_str, '%Y-%m-%d').date()
     
-    # 初始化每个类别的数据容器
-    output = {}
-    categories = Category.objects.filter(user=request.user)
-    for category in categories:
-        output[category.name] = []
+    # 获取URL参数
+    show_mastered = request.GET.get('show_mastered', 'false').lower() == 'true'
+    per_page = int(request.GET.get('per_page', 10))
+    page_number = request.GET.get('page', 1)
+    
+    # 收集所有需要复习的items（扁平化列表）
+    review_items_list = []
     
     # 根据复习曲线匹配单词
     for interval in ReviewDay.objects.filter(user=request.user):
         checkday = reviewDate - timedelta(days=interval.day)
-        # 修改查询逻辑：查找所有在checkday或之前输入的项目，而不只是checkday当天的
+        # 查找所有在checkday或之前输入的项目
         review_items = Item.objects.filter(user=request.user, initDate__lte=checkday)
+        
+        # 根据checkbox状态过滤已掌握的单词
+        if not show_mastered:
+            review_items = review_items.exclude(proficiency=Proficiency.MASTERED)
+        
         for item in review_items:
             # 生成 item 的详细页面 URL
             detail_url = reverse('item-detail', args=[item.pk])
-            output[item.category.name].append([interval.day, item, detail_url])
+            # 存储格式: [interval.day, item, detail_url, category_name]
+            review_items_list.append({
+                'interval_day': interval.day,
+                'item': item,
+                'detail_url': detail_url,
+                'category_name': item.category.name
+            })
+    
+    # 按类别名称和复习周期天数排序
+    review_items_list.sort(key=lambda x: (x['category_name'], x['interval_day']))
+    
+    # 分页处理
+    paginator = Paginator(review_items_list, per_page)
+    page_obj = paginator.get_page(page_number)
+    
+    # 构建context
+    context = {
+        'page_obj': page_obj,
+        'reviewdate': reviewDate,
+        'show_mastered': show_mastered,
+        'per_page': per_page
+    }
     
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-        return HttpResponse(render_to_string('review_day.html', {'output': output, 'reviewdate': reviewDate}, request))
+        return HttpResponse(render_to_string('review_day.html', context, request))
 
-    return render(request, 'review_day.html', {'output': output, 'reviewdate': reviewDate})
+    return render(request, 'review_day.html', context)
 
 
 @login_required

@@ -432,7 +432,7 @@ def ReviewView(request, year, month, day):
         next_review_after_yes = None
         if is_regular:
             # 正式复习：会进入下一个间隔
-            intervals = [0, 1, 2, 4, 7, 15, 30, 90, 180, 365]
+            intervals = [0, 1, 2, 4, 7, 15, 30, 90, 180]
             try:
                 current_index = intervals.index(item.current_interval)
                 if current_index < len(intervals) - 1:
@@ -515,7 +515,7 @@ def ReviewFeedbackYes(request):
             
             if is_regular_review:
                 # 正式复习：进入下一个周期
-                intervals = [0, 1, 2, 4, 7, 15, 30, 90, 180, 365]
+                intervals = [0, 1, 2, 4, 7, 15, 30, 90, 180]
                 try:
                     current_index = intervals.index(curword.current_interval)
                     if current_index < len(intervals) - 1:

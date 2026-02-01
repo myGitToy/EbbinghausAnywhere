@@ -14,7 +14,7 @@ django.setup()
 from EAW.models import Item
 
 # 艾宾浩斯复习间隔（天数）
-REVIEW_INTERVALS = [0, 1, 2, 4, 7, 15, 30, 90, 180, 365]
+REVIEW_INTERVALS = [0, 1, 2, 4, 7, 15, 30, 90, 180]
 
 def migrate_items():
     """迁移所有现有的Item"""

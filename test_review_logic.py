@@ -4,7 +4,7 @@
 """
 from datetime import datetime, timedelta
 
-intervals = [0, 1, 2, 4, 7, 15, 30, 90, 180, 365]
+intervals = [0, 1, 2, 4, 7, 15, 30, 90, 180]
 
 def test_yes_logic():
     """测试点击YES的日期计算"""

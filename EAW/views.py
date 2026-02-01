@@ -479,13 +479,33 @@ def ReviewView(request, year, month, day):
         is_regular = item.next_review_date and item.next_review_date <= reviewDate
         is_extra = item.needs_extra_review and item.extra_review_since and item.extra_review_since <= reviewDate
         
-        # 统计当前周期的不熟悉次数
+        # 统计当前周期的不熟悉次数（兼容记录中存的是索引或天数）
         unfamiliar_count = 0
         if item.unfamiliar_history:
-            unfamiliar_count = sum(
-                1 for record in item.unfamiliar_history 
-                if record.get('interval') == item.current_interval
-            )
+            try:
+                intervals = [0, 1, 2, 4, 7, 15, 30, 90, 180]
+                # 如果 current_interval 是天数，尝试获取对应的索引；否则如果是索引，则获取对应天数
+                if item.current_interval in intervals:
+                    cur_day = item.current_interval
+                    try:
+                        cur_idx = intervals.index(cur_day)
+                    except ValueError:
+                        cur_idx = None
+                else:
+                    # 可能是索引值
+                    try:
+                        cur_idx = int(item.current_interval)
+                        cur_day = intervals[cur_idx] if 0 <= cur_idx < len(intervals) else item.current_interval
+                    except Exception:
+                        cur_idx = None
+                        cur_day = item.current_interval
+
+                unfamiliar_count = sum(
+                    1 for record in item.unfamiliar_history
+                    if record.get('interval') == cur_day or record.get('interval') == cur_idx
+                )
+            except Exception:
+                unfamiliar_count = 0
 
         # 如果该 item 在今天已经被点评（unfamiliar_history 里有今天的记录），则跳过不再显示
         reviewed_today = False
@@ -613,10 +633,17 @@ def ReviewFeedbackYes(request):
                     curword.current_interval = 1
                     curword.next_review_date = review_date + timedelta(days=1)
                 
-                # 清除额外复习和历史
+                # 清除额外复习标记，并仅移除与刚完成周期相关的不熟悉记录（保留其它周期历史）
                 curword.needs_extra_review = False
                 curword.extra_review_since = None
-                curword.unfamiliar_history = []
+                try:
+                    uh = curword.unfamiliar_history or []
+                    # current_interval_value / current_index 表示刚完成的周期（在上面已定义）
+                    filtered = [r for r in uh if r.get('interval') != current_interval_value and r.get('interval') != current_index]
+                    curword.unfamiliar_history = filtered
+                except Exception:
+                    # 如果发生错误，作为回退直接清空历史以保证一致性
+                    curword.unfamiliar_history = []
             else:
                 # 只是额外复习：清除额外复习标记，正式日期不变
                 pass
@@ -664,9 +691,24 @@ def ReviewFeedbackNo(request):
             if not curword.unfamiliar_history:
                 curword.unfamiliar_history = []
             
+            # 规范化存储：尽量把 interval 存为间隔天数（比如 0,1,2,4...），兼容旧的索引值
+            try:
+                intervals = [0, 1, 2, 4, 7, 15, 30, 90, 180]
+                if curword.current_interval in intervals:
+                    interval_value = curword.current_interval
+                else:
+                    # 如果 current_interval 看起来像索引，尝试转换为对应天数
+                    try:
+                        idx = int(curword.current_interval)
+                        interval_value = intervals[idx] if 0 <= idx < len(intervals) else curword.current_interval
+                    except Exception:
+                        interval_value = curword.current_interval
+            except Exception:
+                interval_value = curword.current_interval
+
             curword.unfamiliar_history.append({
                 "date": review_date.isoformat(),
-                "interval": curword.current_interval,
+                "interval": interval_value,
                 "review_type": "regular" if is_regular_review else "extra"
             })
             

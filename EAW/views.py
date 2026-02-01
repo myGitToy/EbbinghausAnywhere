@@ -620,30 +620,12 @@ def ReviewFeedbackNo(request):
                 message = f'该单词在Day {old_interval}已标记3次不熟悉，将从今天重新开始复习周期（Day 0）。'
                 
             elif is_regular_review:
-                # 正式复习日点NO，进入下一周期 + 设置额外复习
-                intervals = [0, 1, 2, 4, 7, 15, 30, 90, 180, 365]
-                try:
-                    current_index = intervals.index(curword.current_interval)
-                    if current_index < len(intervals) - 1:
-                        # 进入下一个间隔
-                        next_index = current_index + 1
-                        next_interval = intervals[next_index]
-                        current_interval_value = intervals[current_index]
-                        
-                        curword.current_interval = next_interval
-                        # 计算天数差：Day 1→Day 2是1天后，Day 2→Day 4是2天后
-                        days_until_next = next_interval - current_interval_value
-                        curword.next_review_date = review_date + timedelta(days=days_until_next)
-                    else:
-                        # 已经是最后一个间隔
-                        curword.next_review_date = review_date + timedelta(days=365)
-                except ValueError:
-                    curword.current_interval = 1
-                    curword.next_review_date = review_date + timedelta(days=1)
-                
+                # 正式复习日点NO：不进入下一周期，保持当前周期 + 设置额外复习
+                # 等到点YES后才进入下一周期
                 # 设置额外复习
                 curword.needs_extra_review = True
                 curword.extra_review_since = review_date + timedelta(days=1)
+                # next_review_date 保持不变，继续在当前周期
             
             # else: 额外复习期间点NO，继续额外复习，next_review_date 不变
             

@@ -446,6 +446,138 @@ def ReviewHomeView(request):
         context={'today': today}
     )
 
+
+# Calendar views and APIs (FullCalendar integration)
+@login_required
+def calendar_month_view(request):
+    """渲染日历页面（前端使用 FullCalendar 拉取事件）。"""
+    today = datetime.today().date()
+    return render(request, 'calendar_month.html', {'today': today})
+
+
+@login_required
+def calendar_events_api(request):
+    """返回指定时间范围内按天聚合的复习统计，FullCalendar 兼容格式。"""
+    try:
+        start = request.GET.get('start')
+        end = request.GET.get('end')
+        if start:
+            start_date = datetime.fromisoformat(start).date()
+        else:
+            start_date = datetime.today().date() - timedelta(days=15)
+        if end:
+            end_date = datetime.fromisoformat(end).date()
+        else:
+            end_date = datetime.today().date() + timedelta(days=15)
+
+        days = (end_date - start_date).days
+        events = []
+
+        for i in range(days + 1):
+            d = start_date + timedelta(days=i)
+            # 与 ReviewView 一致的查询逻辑：正式复习日到了 或 额外复习期内
+            from django.db.models import Q
+            review_items = Item.objects.filter(user=request.user).filter(
+                Q(next_review_date__lte=d) | Q(needs_extra_review=True, extra_review_since__lte=d, next_review_date__gt=d)
+            )
+
+            total = review_items.count()
+
+            # 统计已点评（当天有 unfamiliar_history 记录）的数量和逾期数量
+            completed = 0
+            overdue = 0
+            for it in review_items:
+                reviewed = False
+                try:
+                    uh = it.unfamiliar_history or []
+                    for r in uh:
+                        if r.get('date') == d.isoformat():
+                            reviewed = True
+                            break
+                except Exception:
+                    reviewed = False
+
+                if reviewed:
+                    completed += 1
+
+                if it.next_review_date and it.next_review_date < d and not reviewed:
+                    overdue += 1
+
+            pending = max(0, total - completed)
+
+            title = f"{pending} 待 · {completed} 已"
+
+            events.append({
+                'id': d.isoformat(),
+                'title': title,
+                'start': d.isoformat(),
+                'allDay': True,
+                'pending': pending,
+                'completed': completed,
+                'overdue': overdue,
+            })
+
+        return JsonResponse(events, safe=False)
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required
+def calendar_day_items_api(request):
+    """返回指定日期的复习条目列表（JSON）。"""
+    try:
+        date_str = request.GET.get('date')
+        if not date_str:
+            return JsonResponse({'error': 'Missing date parameter'}, status=400)
+        d = datetime.fromisoformat(date_str).date()
+
+        from django.db.models import Q
+        review_items = Item.objects.filter(user=request.user).filter(
+            Q(next_review_date__lte=d) | Q(needs_extra_review=True, extra_review_since__lte=d, next_review_date__gt=d)
+        )
+
+        items = []
+        for it in review_items:
+            try:
+                uh = it.unfamiliar_history or []
+                reviewed_today = any(r.get('date') == d.isoformat() for r in uh)
+                # 统计当前周期不熟悉次数（兼容索引或天数）
+                intervals = [0,1,2,4,7,15,30,90,180]
+                if it.current_interval in intervals:
+                    cur_day = it.current_interval
+                    try:
+                        cur_idx = intervals.index(cur_day)
+                    except Exception:
+                        cur_idx = None
+                else:
+                    try:
+                        cur_idx = int(it.current_interval)
+                        cur_day = intervals[cur_idx] if 0 <= cur_idx < len(intervals) else it.current_interval
+                    except Exception:
+                        cur_idx = None
+                        cur_day = it.current_interval
+
+                unfamiliar_count = sum(1 for r in (uh or []) if r.get('interval') == cur_day or r.get('interval') == cur_idx)
+            except Exception:
+                reviewed_today = False
+                unfamiliar_count = 0
+
+            items.append({
+                'id': it.id,
+                'item': it.item,
+                'interval_day': it.current_interval,
+                'next_review_date': it.next_review_date.isoformat() if it.next_review_date else None,
+                'unfamiliar_count': unfamiliar_count,
+                'reviewed_today': reviewed_today,
+                'detail_url': reverse('item-detail', args=[it.pk])
+            })
+
+        return JsonResponse({'date': d.isoformat(), 'items': items})
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
 @login_required
 def ReviewView(request, year, month, day):
     from django.db.models import Q

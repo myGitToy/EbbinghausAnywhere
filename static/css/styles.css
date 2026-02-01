@@ -235,4 +235,74 @@ main {
 .card-header {
     padding: 1rem; /* 可调整 */
 }
+
+/* Item Detail 页面自定义样式 */
+.content-block {
+    border-radius: 0.25rem;
+    line-height: 1.8;
+}
+
+.info-label {
+    font-weight: 600;
+    color: #495057;
+}
+
+.card-header.bg-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+}
+
+.btn-outline-light:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-color: #fff;
+}
+
+.btn-outline-danger {
+    border-color: rgba(255, 255, 255, 0.5);
+    color: #fff;
+}
+
+.btn-outline-danger:hover {
+    background-color: #dc3545;
+    border-color: #dc3545;
+}
+
+/* 音频播放按钮悬停效果 */
+.btn-primary.rounded-circle:hover {
+    transform: scale(1.1);
+    transition: transform 0.2s ease;
+}
+
+/* 返回按钮悬停效果 */
+a.btn.rounded-circle:hover {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important;
+    transform: scale(1.05);
+    transition: all 0.3s ease;
+}
+
+/* 折叠按钮动画 */
+.btn-outline-secondary:hover {
+    background-color: #6c757d;
+    color: #fff;
+}
+
+/* Badge样式优化 */
+.badge {
+    font-weight: 500;
+    padding: 0.4em 0.8em;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+    .card-header h4 {
+        font-size: 1.2rem;
+    }
+    
+    .card-body {
+        padding: 1.5rem !important;
+    }
+    
+    .content-block {
+        padding: 1rem !important;
+    }
+}
 </style>

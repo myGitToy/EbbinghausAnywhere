@@ -83,6 +83,32 @@ class Item(models.Model):
         blank=True, 
         help_text="British Phonetic (optional)"
     )
+    
+    # 新的复习系统字段
+    next_review_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Next scheduled review date"
+    )
+    current_interval = models.IntegerField(
+        default=0,
+        help_text="Current review interval in days (0,1,2,4,7,15,30,90,180,365)"
+    )
+    needs_extra_review = models.BooleanField(
+        default=False,
+        help_text="Needs extra review (marked after clicking NO)"
+    )
+    extra_review_since = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Extra review start date"
+    )
+    unfamiliar_history = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="History of unfamiliar markings"
+    )
+    
     def __str__(self):
         return f"{self.item} ({self.get_proficiency_display()}) in {self.category.name}"
 

@@ -276,6 +276,65 @@ class ItemDetailView(DetailView):
             return render(self.request, 'EAW/item_not_found.html', status=404)
         return obj
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        item = context.get('object')
+        from datetime import date, timedelta
+
+        # 与其他地方保持一致的间隔定义
+        intervals = [0, 1, 2, 4, 7, 15, 30, 90, 180]
+
+        # 基准日期：优先使用 initDate，否则使用 inputDate，若都无则使用今天
+        base_date = item.initDate or item.inputDate or date.today()
+
+        # unfamiliar_history 可能为 None
+        uh = item.unfamiliar_history or []
+
+        schedule = []
+        today = date.today()
+        # 计算当前的索引（如果 current_interval 存的是天数）
+        try:
+            current_index = intervals.index(item.current_interval) if item.current_interval is not None else None
+        except ValueError:
+            current_index = None
+
+        for idx, days in enumerate(intervals):
+            scheduled_date = None
+            try:
+                scheduled_date = base_date + timedelta(days=days)
+            except Exception:
+                scheduled_date = None
+
+            # 是否已完成：根据 current_index（interval 的索引）判断
+            completed = False
+            if current_index is not None and current_index > idx:
+                completed = True
+
+            # 是否逾期（已过计划日但未完成）
+            overdue = False
+            if scheduled_date and scheduled_date < today and not completed:
+                overdue = True
+
+            # 熟悉判断：如果 completed 并且 unfamiliar_history 中没有该 interval 的记录，则视为熟悉
+            unfamiliar_records = [r for r in uh if r.get('interval') == days or r.get('interval') == idx]
+            if completed:
+                familiar = (len(unfamiliar_records) == 0)
+            else:
+                familiar = None
+
+            schedule.append({
+                'index': idx,
+                'days': days,
+                'scheduled_date': scheduled_date,
+                'completed': completed,
+                'overdue': overdue,
+                'familiar': familiar,
+                'unfamiliar_records': unfamiliar_records,
+            })
+
+        context['review_schedule'] = schedule
+        return context
+
 
 @method_decorator(login_required, name='dispatch')
 class ItemUpdateView(generic.UpdateView):
@@ -382,6 +441,8 @@ def ReviewHomeView(request):
 
 @login_required
 def ReviewView(request, year, month, day):
+    from django.db.models import Q
+    
     # 创建选择的复习日期
     d1 = f"{year}-{month}-{day}"
     reviewDate = datetime.strptime(d1, '%Y-%m-%d').date()
@@ -397,32 +458,109 @@ def ReviewView(request, year, month, day):
     per_page = int(request.GET.get('per_page', 10))
     page_number = request.GET.get('page', 1)
     
-    # 收集所有需要复习的items（扁平化列表）
+    # 查询需要复习的单词
+    review_items_query = Item.objects.filter(user=request.user).filter(
+        Q(next_review_date__lte=reviewDate) |  # 正式复习日到了
+        Q(needs_extra_review=True, extra_review_since__lte=reviewDate, next_review_date__gt=reviewDate)  # 额外复习期内且未到正式复习日
+    )
+    
+    # 收集复习items信息
+    # 注意：只要next_review_date到了就应该复习，不管proficiency是什么
+    # proficiency只是记录上次复习的结果，不影响是否需要复习
     review_items_list = []
     
-    # 根据复习曲线匹配单词
-    for interval in ReviewDay.objects.filter(user=request.user):
-        checkday = reviewDate - timedelta(days=interval.day)
-        # 查找所有在checkday或之前输入的项目
-        review_items = Item.objects.filter(user=request.user, initDate__lte=checkday)
+    for item in review_items_query:
+        # 计算逾期天数
+        overdue_days = 0
+        if item.next_review_date and item.next_review_date < reviewDate:
+            overdue_days = (reviewDate - item.next_review_date).days
         
-        # 根据checkbox状态过滤已掌握的单词
-        if not show_mastered:
-            review_items = review_items.exclude(proficiency=Proficiency.MASTERED)
+        # 判断复习类型
+        is_regular = item.next_review_date and item.next_review_date <= reviewDate
+        is_extra = item.needs_extra_review and item.extra_review_since and item.extra_review_since <= reviewDate
         
-        for item in review_items:
-            # 生成 item 的详细页面 URL
-            detail_url = reverse('item-detail', args=[item.pk])
-            # 存储格式: [interval.day, item, detail_url, category_name]
-            review_items_list.append({
-                'interval_day': interval.day,
-                'item': item,
-                'detail_url': detail_url,
-                'category_name': item.category.name
-            })
+        # 统计当前周期的不熟悉次数（兼容记录中存的是索引或天数）
+        unfamiliar_count = 0
+        if item.unfamiliar_history:
+            try:
+                intervals = [0, 1, 2, 4, 7, 15, 30, 90, 180]
+                # 如果 current_interval 是天数，尝试获取对应的索引；否则如果是索引，则获取对应天数
+                if item.current_interval in intervals:
+                    cur_day = item.current_interval
+                    try:
+                        cur_idx = intervals.index(cur_day)
+                    except ValueError:
+                        cur_idx = None
+                else:
+                    # 可能是索引值
+                    try:
+                        cur_idx = int(item.current_interval)
+                        cur_day = intervals[cur_idx] if 0 <= cur_idx < len(intervals) else item.current_interval
+                    except Exception:
+                        cur_idx = None
+                        cur_day = item.current_interval
+
+                unfamiliar_count = sum(
+                    1 for record in item.unfamiliar_history
+                    if record.get('interval') == cur_day or record.get('interval') == cur_idx
+                )
+            except Exception:
+                unfamiliar_count = 0
+
+        # 如果该 item 在今天已经被点评（unfamiliar_history 里有今天的记录），则标记为已点评但仍显示
+        reviewed_today = False
+        last_review_type = None
+        if item.unfamiliar_history:
+            for record in item.unfamiliar_history:
+                try:
+                    if record.get('date') == reviewDate.isoformat():
+                        reviewed_today = True
+                        last_review_type = record.get('review_type')
+                        break
+                except Exception:
+                    continue
+        
+        # 计算如果点YES，下次复习日期是什么
+        next_review_after_yes = None
+        if is_regular:
+            # 正式复习：会进入下一个间隔
+            intervals = [0, 1, 2, 4, 7, 15, 30, 90, 180]
+            try:
+                current_index = intervals.index(item.current_interval)
+                if current_index < len(intervals) - 1:
+                    next_interval = intervals[current_index + 1]
+                    current_interval_value = intervals[current_index]
+                    days_until_next = next_interval - current_interval_value
+                    next_review_after_yes = reviewDate + timedelta(days=days_until_next)
+                else:
+                    # 已经是最后一个间隔
+                    next_review_after_yes = reviewDate + timedelta(days=365)
+            except ValueError:
+                next_review_after_yes = reviewDate + timedelta(days=1)
+        else:
+            # 只是额外复习：next_review_date不变
+            next_review_after_yes = item.next_review_date
+        
+        # 生成详细页面URL
+        detail_url = reverse('item-detail', args=[item.pk])
+        
+        review_items_list.append({
+            'item': item,
+            'category_name': item.category.name,
+            'interval_day': item.current_interval,
+            'next_review_date': item.next_review_date or reviewDate,
+            'next_review_after_yes': next_review_after_yes,
+            'overdue_days': overdue_days,
+            'is_regular': is_regular,
+            'is_extra': is_extra,
+            'unfamiliar_count': unfamiliar_count,
+            'reviewed_today': reviewed_today,
+            'last_review_type': last_review_type,
+            'detail_url': detail_url
+        })
     
-    # 按类别名称和复习周期天数排序
-    review_items_list.sort(key=lambda x: (x['category_name'], x['interval_day']))
+    # 排序：额外复习优先，然后按类别和间隔
+    review_items_list.sort(key=lambda x: (not x['is_extra'], x['category_name'], x['interval_day']))
     
     # 分页处理
     paginator = Paginator(review_items_list, per_page)
@@ -446,24 +584,98 @@ def ReviewView(request, year, month, day):
 def ReviewFeedbackYes(request):
     """
     更新指定 Item 的 proficiency 为 MASTERED（熟练）。
+    根据新逻辑：正式复习进入下一周期，额外复习只清除标记。
     """
     try:
         if request.method == "POST":
             # 解析请求数据
             data = json.loads(request.body.decode("utf-8"))
             item_id = data.get('id')
+            review_date_str = data.get('date')
+            
+            if review_date_str:
+                review_date = datetime.strptime(str(review_date_str), '%Y-%m-%d').date()
+            else:
+                review_date = datetime.today().date()
 
             # 获取当前用户的 Item
             curword = Item.objects.get(user=request.user, id=item_id)
-
+            
+            # 判断是否为正式复习
+            is_regular_review = curword.next_review_date and curword.next_review_date <= review_date
+            
             # 更新 proficiency 为 MASTERED
             curword.proficiency = Proficiency.MASTERED
+            
+            if is_regular_review:
+                # 正式复习：进入下一个周期
+                intervals = [0, 1, 2, 4, 7, 15, 30, 90, 180]
+                try:
+                    current_index = intervals.index(curword.current_interval)
+                    if current_index < len(intervals) - 1:
+                        # 进入下一个间隔
+                        next_index = current_index + 1
+                        next_interval = intervals[next_index]
+                        current_interval_value = intervals[current_index]
+                        
+                        # 更新间隔
+                        curword.current_interval = next_interval
+                        
+                        # 计算距离下次复习的天数 = 下个间隔 - 当前间隔
+                        # 例如：Day 0→Day 1: 1-0=1天后
+                        #      Day 1→Day 2: 2-1=1天后
+                        #      Day 2→Day 4: 4-2=2天后
+                        days_until_next = next_interval - current_interval_value
+                        curword.next_review_date = review_date + timedelta(days=days_until_next)
+                    else:
+                        # 已经是最后一个间隔（Day 365），保持365天周期
+                        curword.next_review_date = review_date + timedelta(days=365)
+                except ValueError:
+                    # 如果current_interval不在列表中，重置为Day 0，下次是明天Day 1
+                    curword.current_interval = 1
+                    curword.next_review_date = review_date + timedelta(days=1)
+                
+                # 清除额外复习标记，并仅移除与刚完成周期相关的不熟悉记录（保留其它周期历史）
+                curword.needs_extra_review = False
+                curword.extra_review_since = None
+                try:
+                    uh = curword.unfamiliar_history or []
+                    # current_interval_value / current_index 表示刚完成的周期（在上面已定义）
+                    filtered = [r for r in uh if r.get('interval') != current_interval_value and r.get('interval') != current_index]
+                    curword.unfamiliar_history = filtered
+                except Exception:
+                    # 如果发生错误，作为回退直接清空历史以保证一致性
+                    curword.unfamiliar_history = []
+            else:
+                # 只是额外复习：清除额外复习标记，正式日期不变
+                pass
+            
+            # 无论是正式复习还是额外复习，点YES后都清除额外复习标记
+            curword.needs_extra_review = False
+            curword.extra_review_since = None
+            
+            # 幂等性：如果当天已存在相同日期的记录，返回已点评信息而不重复修改
+            try:
+                if curword.unfamiliar_history:
+                    for r in curword.unfamiliar_history:
+                        if r.get('date') == review_date.isoformat():
+                            curword.save()
+                            return JsonResponse({
+                                'success': True,
+                                'message': 'Already reviewed today',
+                                'mastery': curword.get_proficiency_display(),
+                                'reviewed_today': True,
+                            })
+            except Exception:
+                pass
+
             curword.save()
 
             return JsonResponse({
                 'success': True,
                 'message': 'Proficiency updated to MASTERED.',
-                'mastery': curword.get_proficiency_display()  # 返回最新的掌握程度
+                'mastery': curword.get_proficiency_display(),
+                'reviewed_today': True,
             })
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)})
@@ -473,25 +685,109 @@ def ReviewFeedbackYes(request):
 def ReviewFeedbackNo(request):
     """
     更新指定 Item 的 proficiency 为 UNFAMILIAR（不熟练）。
+    根据新逻辑：记录不熟悉，如果达到3次则重启周期，否则进入下一周期并设置额外复习。
     """
     try:
         if request.method == "POST":
             # 解析请求数据
             data = json.loads(request.body.decode("utf-8"))
             item_id = data.get('id')
+            review_date_str = data.get('date')
+            
+            if review_date_str:
+                review_date = datetime.strptime(str(review_date_str), '%Y-%m-%d').date()
+            else:
+                review_date = datetime.today().date()
 
             # 获取当前用户的 Item
             curword = Item.objects.get(user=request.user, id=item_id)
+            
+            # 判断是否为正式复习
+            is_regular_review = curword.next_review_date and curword.next_review_date <= review_date
+            
+            # 记录不熟悉
+            if not curword.unfamiliar_history:
+                curword.unfamiliar_history = []
+            
+            # 规范化存储：尽量把 interval 存为间隔天数（比如 0,1,2,4...），兼容旧的索引值
+            try:
+                intervals = [0, 1, 2, 4, 7, 15, 30, 90, 180]
+                if curword.current_interval in intervals:
+                    interval_value = curword.current_interval
+                else:
+                    # 如果 current_interval 看起来像索引，尝试转换为对应天数
+                    try:
+                        idx = int(curword.current_interval)
+                        interval_value = intervals[idx] if 0 <= idx < len(intervals) else curword.current_interval
+                    except Exception:
+                        interval_value = curword.current_interval
+            except Exception:
+                interval_value = curword.current_interval
 
+            # 在添加前检查是否已存在当天的记录以保证幂等性
+            exists_today = False
+            try:
+                if curword.unfamiliar_history:
+                    for r in curword.unfamiliar_history:
+                        if r.get('date') == review_date.isoformat():
+                            exists_today = True
+                            break
+            except Exception:
+                exists_today = False
+
+            if not exists_today:
+                curword.unfamiliar_history.append({
+                    "date": review_date.isoformat(),
+                    "interval": interval_value,
+                    "review_type": "regular" if is_regular_review else "extra"
+                })
+            
             # 更新 proficiency 为 UNFAMILIAR
             curword.proficiency = Proficiency.UNFAMILIAR
+            
+            # 统计当前周期的不熟悉次数（基于规范化的 interval_value）
+            try:
+                current_cycle_count = sum(
+                    1 for record in curword.unfamiliar_history
+                    if record.get('interval') == interval_value
+                )
+            except Exception:
+                current_cycle_count = 0
+            
+            message = 'Proficiency updated to UNFAMILIAR.'
+            
+            if current_cycle_count >= 3:
+                # 达到3次，重新开始周期
+                old_interval = curword.current_interval
+                curword.current_interval = 0
+                curword.next_review_date = review_date  # Day 0就是今天
+                curword.unfamiliar_history = []
+                curword.needs_extra_review = False
+                curword.extra_review_since = None
+                message = f'该单词在Day {old_interval}已标记3次不熟悉，将从今天重新开始复习周期（Day 0）。'
+                
+            elif is_regular_review:
+                # 正式复习日点NO：不进入下一周期，保持当前周期 + 设置额外复习
+                # 等到点YES后才进入下一周期
+                # 设置额外复习
+                curword.needs_extra_review = True
+                curword.extra_review_since = review_date + timedelta(days=1)
+                # next_review_date 保持不变，继续在当前周期
+            
+            # else: 额外复习期间点NO，继续额外复习，next_review_date 不变
+            
             curword.save()
 
-            return JsonResponse({
+            # 如果当天已存在记录，向前端说明为已点评
+            resp = {
                 'success': True,
-                'message': 'Proficiency updated to UNFAMILIAR.',
-                'mastery': curword.get_proficiency_display()  # 返回最新的掌握程度
-            })
+                'message': message,
+                'mastery': curword.get_proficiency_display(),
+                'unfamiliar_count': current_cycle_count,
+                'reviewed_today': exists_today or True,
+            }
+
+            return JsonResponse(resp)
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)})
 
@@ -499,7 +795,7 @@ def ReviewFeedbackNo(request):
 @login_required
 def ReviewFeedbackReset(request):
     """
-    重置指定 Item 的 initDate 为今天的日期，并将 proficiency 改为 UNFAMILIAR。
+    重置指定 Item 的复习周期，从Day 0重新开始。
     """
     try:
         if request.method == "POST":
@@ -510,17 +806,20 @@ def ReviewFeedbackReset(request):
             # 获取当前用户的 Item
             curword = Item.objects.get(user=request.user, id=item_id)
 
-            # 更新 initDate 为当前日期
-            curword.initDate = datetime.today()
-
-            # 更新 proficiency 为 UNFAMILIAR
+            # 重置复习周期
+            today = datetime.today().date()
+            curword.current_interval = 0
+            curword.next_review_date = today  # 今天就开始Day 0
             curword.proficiency = Proficiency.UNFAMILIAR
+            curword.unfamiliar_history = []
+            curword.needs_extra_review = False
+            curword.extra_review_since = None
             curword.save()
 
             return JsonResponse({
                 'success': True,
-                'message': 'initDate reset to today and proficiency set to UNFAMILIAR.',
-                'mastery': curword.get_proficiency_display()  # 返回最新的掌握程度
+                'message': 'Review cycle has been reset. Starting from Day 0.',
+                'mastery': curword.get_proficiency_display()
             })
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)})
@@ -629,7 +928,12 @@ def InputView(request):
                     content=explain_txt,
                     src_tts=src_tts if translate else None,  # 如果未勾选翻译，TTS 地址为 None
                     us_phonetic=phonetic_am,  # 存储美式音标
-                    uk_phonetic=phonetic_en   # 存储英式音标
+                    uk_phonetic=phonetic_en,   # 存储英式音标
+                    # 新增复习系统字段
+                    current_interval=0,
+                    next_review_date=data['input_date'],  # Day 0从录入日期开始
+                    needs_extra_review=False,
+                    unfamiliar_history=[]
                 )
 
             return redirect(reverse('item-list'))  # 重定向到项列表页面
@@ -1005,7 +1309,12 @@ def deepseek_save_view(request):
                 category=category,
                 uk_phonetic=query_data.get('uk_phonetic', ''),
                 us_phonetic=query_data.get('us_phonetic', ''),
-                src_tts=f"https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=en&q={word}"
+                src_tts=f"https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=en&q={word}",
+                # 新增复习系统字段
+                current_interval=0,
+                next_review_date=today,  # Day 0从今天开始
+                needs_extra_review=False,
+                unfamiliar_history=[]
             )
             
             return JsonResponse({

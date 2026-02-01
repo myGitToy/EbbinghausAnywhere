@@ -223,9 +223,18 @@ function queryWord(word) {
         }
     })
     .catch(error => {
-        console.error('Error:', error);
+        console.error('Fetch Error:', error);
         loadingIndicator.classList.add('d-none');
-        alert('查询失败: ' + error.message);
+        
+        // 提供更详细的错误信息
+        let errorMsg = '网络请求失败';
+        if (error.message) {
+            errorMsg += ': ' + error.message;
+        }
+        if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
+            errorMsg = '网络请求失败，请检查:\n1. 网络连接是否正常\n2. 服务器是否运行\n3. 浏览器控制台是否有CORS错误';
+        }
+        alert(errorMsg);
     });
 }
 

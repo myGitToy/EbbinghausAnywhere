@@ -1,2 +1,59 @@
 #打包镜像文件命令
 docker build -t ewa:0.0.4 .
+
+# 查看日志
+docker-compose logs -f web
+
+# 重启服务
+docker-compose restart
+
+# 停止服务
+docker-compose down
+
+# 更新应用
+git pull
+docker-compose build
+docker-compose up -d
+docker-compose exec web python manage.py migrate
+docker-compose exec web python manage.py collectstatic --noinput
+
+
+# 获取SSL证书
+docker-compose run --rm certbot certonly --webroot \
+  --webroot-path=/var/www/certbot \
+  -d your_domain.com \
+  --email your_email@example.com \
+  --agree-tos
+
+# 在nginx.conf中启用HTTPS配置（取消注释）
+# 然后重启Nginx
+docker-compose restart nginx
+
+
+# 1. 安装Docker
+curl -fsSL https://get.docker.com | sh
+sudo usermod -aG docker $USER
+newgrp docker
+
+# 2. 上传项目代码到服务器
+# 使用git clone或scp上传
+
+# 3. 进入项目目录
+cd EbbinghausAnywhere
+
+# 4. 修改.env文件（重要！）
+nano .env
+# 设置DEBUG=False
+# 设置ALLOWED_HOSTS=your_domain.com,localhost
+# 修改SECRET_KEY
+
+# 5. 构建并启动
+docker-compose build
+docker-compose up -d
+
+# 6. 创建管理员账户
+docker-compose exec web python manage.py createsuperuser
+
+# 7. 查看服务状态
+docker-compose ps
+docker-compose logs -f web

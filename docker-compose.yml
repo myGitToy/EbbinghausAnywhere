@@ -1,0 +1,87 @@
+version: '3.8'
+
+services:
+  # PostgreSQL数据库
+  db:
+    image: postgres:15-alpine
+    container_name: ebbinghaus_db
+    restart: always
+    environment:
+      POSTGRES_DB: ebbinghaus
+      POSTGRES_USER: ebbinghaus_user
+      POSTGRES_PASSWORD: your_secure_password_here
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - ebbinghaus_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ebbinghaus_user -d ebbinghaus"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Django应用
+  web:
+    build: .
+    container_name: ebbinghaus_web
+    restart: always
+    command: /app/entrypoint.sh
+    volumes:
+      - ./staticfiles:/app/staticfiles
+      - ./media:/app/media
+      - ./db.sqlite3:/app/db.sqlite3
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - DEBUG=False
+      - DATABASE_URL=sqlite:///db.sqlite3
+      # 如果使用PostgreSQL，取消注释下面这行并注释上面的sqlite行
+      # - DATABASE_URL=postgres://ebbinghaus_user:your_secure_password_here@db:5432/ebbinghaus
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - ebbinghaus_network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Nginx反向代理
+  nginx:
+    image: nginx:alpine
+    container_name: ebbinghaus_nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./staticfiles:/app/staticfiles:ro
+      - ./media:/app/media:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
+    depends_on:
+      - web
+    networks:
+      - ebbinghaus_network
+
+  # Certbot for SSL certificates (optional)
+  certbot:
+    image: certbot/certbot
+    container_name: ebbinghaus_certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+
+volumes:
+  postgres_data:
+
+networks:
+  ebbinghaus_network:
+    driver: bridge

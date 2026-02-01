@@ -44,4 +44,10 @@ urlpatterns = [
     path('import_user_data/', views.import_items_from_excel, name='import_user_data'),
     path('about/', views.about, name='about'),  # 关于页面
     path('readme/', views.readme_view, name='readme'),
+    
+    # DeepSeek API 相关路由
+    path('deepseek/config/', views.deepseek_config_view, name='deepseek-config'),
+    path('deepseek/query/', views.deepseek_query_view, name='deepseek-query'),
+    path('deepseek/save/', views.deepseek_save_view, name='deepseek-save'),
+    path('api/check-deepseek-keys/', views.check_deepseek_keys_view, name='check-deepseek-keys'),
 ]

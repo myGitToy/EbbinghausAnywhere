@@ -6,7 +6,7 @@ from datetime import datetime
 from datetime import timedelta
 from django.utils.timezone import now
 from django import forms
-from .forms import InputForm,  CustomUserCreationForm, EmailUpdateForm, UpdateNameForm, CustomPasswordChangeForm
+from .forms import InputForm,  CustomUserCreationForm, EmailUpdateForm, UpdateNameForm, CustomPasswordChangeForm, DeepSeekConfigForm
 from django.utils.decorators import method_decorator
 from django.views.generic.detail import DetailView
 from django.contrib.auth.decorators import permission_required
@@ -36,9 +36,10 @@ from django.views.decorators.csrf import csrf_exempt
 import json
 from django.template.loader import render_to_string
 from .translate import baidu_translate, parse_json_to_string, check_api_keys
+from .deepseek import deepseek_translate, check_deepseek_keys, call_deepseek_api
 import openpyxl
 from django.db import transaction
-from .models import Item, Category, Proficiency
+from .models import Item, Category, Proficiency, ReviewDay, DeepSeekConfig
 import difflib
 import uuid
 from .utils import fetch_and_merge_translation
@@ -774,5 +775,184 @@ def readme_view(request):
 
     # 渲染模板
     return render(request, 'readme.html', {'content': html_content})
+
+
+# ==================== DeepSeek API 相关视图 ====================
+
+@login_required
+def deepseek_config_view(request):
+    """DeepSeek API 配置页面"""
+    # 获取或创建用户的配置
+    config, created = DeepSeekConfig.objects.get_or_create(
+        user=request.user,
+        defaults={
+            'model': 'deepseek-chat',
+            'temperature': 1.0,
+            'system_prompt': '你是英语词典助手。输入：英文单词。输出：JSON格式包含uk_phonetic(英音标)、us_phonetic(美音标)、meaning(中文释义)、example_sentences(2-3个例句数组，每个包含english和chinese字段)。目标用户：小学5年级。严格按照JSON格式输出，不要添加任何其他文字或markdown代码块标记。',
+            'is_active': True
+        }
+    )
+    
+    if request.method == 'POST':
+        form = DeepSeekConfigForm(request.POST, instance=config)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'DeepSeek 配置已成功保存！')
+            return redirect('deepseek-config')
+        else:
+            messages.error(request, '配置保存失败，请检查输入。')
+    else:
+        form = DeepSeekConfigForm(instance=config)
+    
+    return render(request, 'deepseek_config.html', {'form': form})
+
+
+@login_required
+def deepseek_query_view(request):
+    """DeepSeek 查询页面"""
+    if request.method == 'GET':
+        return render(request, 'deepseek_query.html')
+    
+    elif request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            word = data.get('word', '').strip()
+            
+            if not word:
+                return JsonResponse({'success': False, 'error': '请输入单词'})
+            
+            # 调用 DeepSeek API
+            result = call_deepseek_api(word, user=request.user)
+            
+            if not result:
+                return JsonResponse({'success': False, 'error': 'API 调用失败或返回空结果'})
+            
+            # 解析结果
+            uk_phonetic = result.get('phonetic', [])[0] if result.get('phonetic') else ''
+            us_phonetic = result.get('phonetic', [])[1] if len(result.get('phonetic', [])) > 1 else ''
+            
+            # 提取简明释义
+            simple_meaning = result.get('simple_meaning', [])
+            meaning = simple_meaning[0].replace('简明释义: ', '') if simple_meaning else ''
+            
+            # 提取例句（从 parts_and_means）
+            parts_and_means = result.get('parts_and_means', [])
+            example_sentences = []
+            
+            if parts_and_means:
+                # 解析例句
+                content = '\n'.join(parts_and_means)
+                lines = content.split('\n')
+                current_example = {}
+                
+                for line in lines:
+                    line = line.strip()
+                    if line.startswith('例句'):
+                        if current_example:
+                            example_sentences.append(current_example)
+                        current_example = {'english': line.split(': ', 1)[1] if ': ' in line else line}
+                    elif line.startswith('翻译'):
+                        current_example['chinese'] = line.split(': ', 1)[1] if ': ' in line else line
+                
+                if current_example and 'chinese' in current_example:
+                    example_sentences.append(current_example)
+            
+            response_data = {
+                'success': True,
+                'data': {
+                    'uk_phonetic': uk_phonetic,
+                    'us_phonetic': us_phonetic,
+                    'meaning': meaning,
+                    'example_sentences': example_sentences
+                }
+            }
+            
+            return JsonResponse(response_data)
+            
+        except json.JSONDecodeError:
+            return JsonResponse({'success': False, 'error': 'JSON 解析失败'})
+        except Exception as e:
+            logger.error(f"DeepSeek query error: {e}")
+            return JsonResponse({'success': False, 'error': str(e)})
+
+
+@login_required
+def deepseek_save_view(request):
+    """保存 DeepSeek 查询结果到数据库"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            word = data.get('word', '').strip()
+            query_data = data.get('data', {})
+            
+            if not word:
+                return JsonResponse({'success': False, 'error': '单词不能为空'})
+            
+            # 获取默认分类"单词"
+            category = Category.objects.filter(
+                user=request.user, 
+                name='单词'
+            ).first()
+            
+            # 如果没有找到"单词"分类，创建或使用第一个分类
+            if not category:
+                category, _ = Category.objects.get_or_create(
+                    user=request.user,
+                    name='单词',
+                    defaults={'is_default': True, 'sort_order': 0}
+                )
+            
+            # 构建内容
+            content_parts = []
+            
+            # 添加释义
+            if query_data.get('meaning'):
+                content_parts.append(f"释义: {query_data['meaning']}")
+            
+            # 添加例句
+            if query_data.get('example_sentences'):
+                content_parts.append("\n例句:")
+                for idx, example in enumerate(query_data['example_sentences'], 1):
+                    content_parts.append(f"{idx}. {example.get('english', '')}")
+                    content_parts.append(f"   {example.get('chinese', '')}")
+            
+            content = '\n'.join(content_parts)
+            
+            # 获取今天的日期
+            today = now().date()
+            
+            # 创建 Item
+            item = Item.objects.create(
+                user=request.user,
+                item=word,
+                content=content,
+                inputDate=today,
+                initDate=today,
+                proficiency=Proficiency.UNFAMILIAR,
+                category=category,
+                uk_phonetic=query_data.get('uk_phonetic', ''),
+                us_phonetic=query_data.get('us_phonetic', ''),
+                src_tts=f"https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=en&q={word}"
+            )
+            
+            return JsonResponse({
+                'success': True,
+                'message': '保存成功',
+                'item_id': item.id
+            })
+            
+        except json.JSONDecodeError:
+            return JsonResponse({'success': False, 'error': 'JSON 解析失败'})
+        except Exception as e:
+            logger.error(f"DeepSeek save error: {e}")
+            return JsonResponse({'success': False, 'error': str(e)})
+    
+    return JsonResponse({'success': False, 'error': '仅支持 POST 请求'})
+
+
+def check_deepseek_keys_view(request):
+    """检查 DeepSeek API Key 是否配置"""
+    configured = check_deepseek_keys()
+    return JsonResponse({'configured': configured})
 
 

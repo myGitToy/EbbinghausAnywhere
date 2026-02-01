@@ -163,6 +163,10 @@ LOGGING = {
     },
 }
 
+# DeepSeek API Configuration
+DEEPSEEK_API_KEY = env('DEEPSEEK_API_KEY', default=None)
+DEEPSEEK_BASE_URL = env('DEEPSEEK_BASE_URL', default='https://api.deepseek.com')
+
 try:
     from .local_settings import *
 except ImportError:

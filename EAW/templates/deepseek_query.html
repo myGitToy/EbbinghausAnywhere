@@ -1,0 +1,385 @@
+{% extends "base_generic.html" %}
+
+{% block title %}DeepSeek 单词查询{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <h3 class="mb-0"><i class="fa fa-search"></i> DeepSeek 单词查询</h3>
+                </div>
+                <div class="card-body">
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    <!-- 查询表单 -->
+                    <div class="mb-4">
+                        <div class="input-group input-group-lg">
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="word-input" 
+                                   placeholder="输入英文单词..." 
+                                   aria-label="单词输入">
+                            <button class="btn btn-primary" 
+                                    type="button" 
+                                    id="query-btn"
+                                    disabled>
+                                <i class="fa fa-search"></i> 查询
+                            </button>
+                        </div>
+                        <div class="form-text">
+                            <i class="fa fa-info-circle"></i> 
+                            提示：输入单词后点击查询按钮，使用 DeepSeek AI 获取释义
+                        </div>
+                    </div>
+
+                    <!-- API 状态检查 -->
+                    <div id="api-status-check" class="alert alert-info d-none">
+                        <div class="spinner-border spinner-border-sm me-2" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        正在检查 API 配置...
+                    </div>
+
+                    <!-- 加载状态 -->
+                    <div id="loading-indicator" class="text-center d-none mb-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">查询中...</span>
+                        </div>
+                        <p class="mt-2">正在查询单词释义，请稍候...</p>
+                        <small class="text-muted">DeepSeek AI 正在思考中</small>
+                    </div>
+
+                    <!-- 查询结果显示区域 -->
+                    <div id="result-container" class="d-none">
+                        <hr>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h4 class="mb-0"><i class="fa fa-book"></i> 查询结果</h4>
+                            <div>
+                                <button class="btn btn-success" id="save-btn" type="button">
+                                    <i class="fa fa-save"></i> 保存到单词本
+                                </button>
+                                <button class="btn btn-outline-secondary" id="clear-btn" type="button">
+                                    <i class="fa fa-times"></i> 清除
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 单词信息卡片 -->
+                        <div class="card border-primary mb-3">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="mb-0" id="result-word">-</h5>
+                            </div>
+                            <div class="card-body">
+                                <!-- 音标和音频 -->
+                                <div class="mb-3">
+                                    <h6><i class="fa fa-volume-up"></i> 发音</h6>
+                                    <div id="phonetic-container">
+                                        <span class="badge bg-info me-2" id="uk-phonetic">-</span>
+                                        <span class="badge bg-info me-2" id="us-phonetic">-</span>
+                                        <button class="btn btn-sm btn-outline-primary" id="play-audio-btn" type="button">
+                                            <i class="fa fa-play"></i> 播放发音
+                                        </button>
+                                        <audio id="word-audio" class="d-none"></audio>
+                                    </div>
+                                </div>
+
+                                <!-- 释义 -->
+                                <div class="mb-3">
+                                    <h6><i class="fa fa-book-open"></i> 释义</h6>
+                                    <div id="meaning-container" class="alert alert-light">
+                                        <p id="meaning-text" class="mb-0">-</p>
+                                    </div>
+                                </div>
+
+                                <!-- 例句 -->
+                                <div class="mb-0">
+                                    <h6><i class="fa fa-quote-left"></i> 例句</h6>
+                                    <div id="examples-container">
+                                        <!-- 例句将通过 JS 动态生成 -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 原始 JSON 数据（可折叠） -->
+                        <div class="accordion" id="jsonAccordion">
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="jsonHeading">
+                                    <button class="accordion-button collapsed" type="button" id="json-toggle-btn">
+                                        <i class="fa fa-code me-2"></i> 查看原始 JSON 数据
+                                    </button>
+                                </h2>
+                                <div id="jsonCollapse" class="accordion-collapse collapse">
+                                    <div class="accordion-body">
+                                        <pre id="json-display" class="bg-dark text-light p-3 rounded" style="max-height: 400px; overflow-y: auto;"><code></code></pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 快捷链接 -->
+                    <div class="mt-4 text-center">
+                        <a href="{% url 'deepseek-config' %}" class="btn btn-outline-primary me-2">
+                            <i class="fa fa-cog"></i> API 配置
+                        </a>
+                        <a href="{% url 'home' %}" class="btn btn-outline-secondary">
+                            <i class="fa fa-home"></i> 返回首页
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentWord = '';
+let currentData = null;
+
+// 页面加载时检查 API 配置
+document.addEventListener('DOMContentLoaded', function() {
+    const statusCheck = document.getElementById('api-status-check');
+    statusCheck.classList.remove('d-none');
+    
+    fetch("{% url 'check-deepseek-keys' %}")
+        .then(response => response.json())
+        .then(data => {
+            statusCheck.classList.add('d-none');
+            const queryBtn = document.getElementById('query-btn');
+            
+            if (data.configured) {
+                queryBtn.disabled = false;
+                queryBtn.title = '点击查询';
+            } else {
+                queryBtn.disabled = true;
+                queryBtn.title = 'API Key 未配置，请先配置';
+                alert('DeepSeek API Key 未配置，请先在配置页面设置 API Key');
+            }
+        })
+        .catch(error => {
+            console.error('Error checking API status:', error);
+            statusCheck.innerHTML = '<i class="fa fa-exclamation-triangle"></i> 检查 API 状态失败';
+            statusCheck.classList.replace('alert-info', 'alert-danger');
+        });
+});
+
+// 查询按钮点击事件
+document.getElementById('query-btn').addEventListener('click', function() {
+    const word = document.getElementById('word-input').value.trim();
+    
+    if (!word) {
+        alert('请输入要查询的单词');
+        return;
+    }
+    
+    currentWord = word;
+    queryWord(word);
+});
+
+// Enter 键触发查询
+document.getElementById('word-input').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        document.getElementById('query-btn').click();
+    }
+});
+
+// 查询单词
+function queryWord(word) {
+    const loadingIndicator = document.getElementById('loading-indicator');
+    const resultContainer = document.getElementById('result-container');
+    
+    // 显示加载状态
+    loadingIndicator.classList.remove('d-none');
+    resultContainer.classList.add('d-none');
+    
+    // 调用后端 API
+    fetch("{% url 'deepseek-query' %}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ word: word })
+    })
+    .then(response => response.json())
+    .then(data => {
+        loadingIndicator.classList.add('d-none');
+        
+        if (data.success) {
+            currentData = data.data;
+            displayResult(word, data.data);
+        } else {
+            alert('查询失败: ' + (data.error || '未知错误'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        loadingIndicator.classList.add('d-none');
+        alert('查询失败: ' + error.message);
+    });
+}
+
+// 显示查询结果
+function displayResult(word, data) {
+    const resultContainer = document.getElementById('result-container');
+    
+    // 显示单词
+    document.getElementById('result-word').textContent = word;
+    
+    // 显示音标
+    const ukPhonetic = data.uk_phonetic || '-';
+    const usPhonetic = data.us_phonetic || '-';
+    document.getElementById('uk-phonetic').textContent = '英 [' + ukPhonetic + ']';
+    document.getElementById('us-phonetic').textContent = '美 [' + usPhonetic + ']';
+    
+    // 设置音频
+    const audio = document.getElementById('word-audio');
+    audio.src = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=en&q=${word}`;
+    
+    // 显示释义
+    document.getElementById('meaning-text').textContent = data.meaning || '-';
+    
+    // 显示例句
+    const examplesContainer = document.getElementById('examples-container');
+    examplesContainer.innerHTML = '';
+    
+    if (data.example_sentences && data.example_sentences.length > 0) {
+        data.example_sentences.forEach((example, index) => {
+            const exampleDiv = document.createElement('div');
+            exampleDiv.className = 'mb-2 p-2 border-start border-3 border-primary bg-light';
+            exampleDiv.innerHTML = `
+                <p class="mb-1"><strong>${index + 1}. ${example.english}</strong></p>
+                <p class="mb-0 text-muted">${example.chinese}</p>
+            `;
+            examplesContainer.appendChild(exampleDiv);
+        });
+    } else {
+        examplesContainer.innerHTML = '<p class="text-muted">暂无例句</p>';
+    }
+    
+    // 显示原始 JSON
+    const jsonDisplay = document.getElementById('json-display');
+    const jsonCode = jsonDisplay.querySelector('code');
+    if (jsonCode) {
+        jsonCode.textContent = JSON.stringify(data, null, 2);
+    } else {
+        jsonDisplay.innerHTML = '<code>' + JSON.stringify(data, null, 2) + '</code>';
+    }
+    
+    // 显示结果容器
+    resultContainer.classList.remove('d-none');
+    
+    // 重置JSON折叠状态为关闭
+    const jsonCollapse = document.getElementById('jsonCollapse');
+    const jsonToggleBtn = document.getElementById('json-toggle-btn');
+    jsonCollapse.classList.remove('show');
+    jsonToggleBtn.classList.add('collapsed');
+    jsonToggleBtn.setAttribute('aria-expanded', 'false');
+}
+
+// 手动处理JSON折叠按钮点击事件
+document.addEventListener('click', function(e) {
+    const btn = e.target.closest('#json-toggle-btn');
+    if (btn) {
+        e.preventDefault();
+        const jsonCollapse = document.getElementById('jsonCollapse');
+        const isExpanded = jsonCollapse.classList.contains('show');
+        
+        if (isExpanded) {
+            // 折叠
+            jsonCollapse.classList.remove('show');
+            btn.classList.add('collapsed');
+            btn.setAttribute('aria-expanded', 'false');
+        } else {
+            // 展开
+            jsonCollapse.classList.add('show');
+            btn.classList.remove('collapsed');
+            btn.setAttribute('aria-expanded', 'true');
+        }
+    }
+});
+
+// 播放音频
+document.getElementById('play-audio-btn').addEventListener('click', function() {
+    const audio = document.getElementById('word-audio');
+    audio.play().catch(error => {
+        console.error('播放失败:', error);
+        alert('音频播放失败，可能是网络问题或浏览器限制');
+    });
+});
+
+// 保存到单词本
+document.getElementById('save-btn').addEventListener('click', function() {
+    if (!currentWord || !currentData) {
+        alert('没有可保存的数据');
+        return;
+    }
+    
+    if (!confirm(`确定要将 "${currentWord}" 保存到单词本吗？`)) {
+        return;
+    }
+    
+    const btn = this;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> 保存中...';
+    
+    fetch("{% url 'deepseek-save' %}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({
+            word: currentWord,
+            data: currentData
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('保存成功！');
+            btn.innerHTML = '<i class="fa fa-check"></i> 已保存';
+            setTimeout(() => {
+                btn.innerHTML = '<i class="fa fa-save"></i> 保存到单词本';
+                btn.disabled = false;
+            }, 2000);
+        } else {
+            alert('保存失败: ' + (data.error || '未知错误'));
+            btn.innerHTML = '<i class="fa fa-save"></i> 保存到单词本';
+            btn.disabled = false;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('保存失败: ' + error.message);
+        btn.innerHTML = '<i class="fa fa-save"></i> 保存到单词本';
+        btn.disabled = false;
+    });
+});
+
+// 清除结果
+document.getElementById('clear-btn').addEventListener('click', function() {
+    document.getElementById('result-container').classList.add('d-none');
+    document.getElementById('word-input').value = '';
+    currentWord = '';
+    currentData = null;
+    
+    // 重置折叠状态
+    const jsonCollapse = document.getElementById('jsonCollapse');
+    const bsCollapse = bootstrap.Collapse.getInstance(jsonCollapse);
+    if (bsCollapse) {
+        bsCollapse.hide();
+    }
+});
+</script>
+{% endblock %}

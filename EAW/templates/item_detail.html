@@ -1,62 +1,198 @@
 {% extends 'base_generic.html' %}
 {% load static %}
 {% block content %}
-<div class="bg-container" style="background-image: url('{% static 'img/bg-callout.jpg' %}'); background-size: cover; background-position: center; height: 100vh; display: flex; justify-content: center; align-items: center;">
-    <div class="card text-center shadow-lg" style="width: 80%; max-width: 600px; background-color: rgba(255, 255, 255, 0.9); padding: 20px; border-radius: 10px;">
-        <h2 class="card-title fw-bold">
-            <a href="/admin/EAW/item/{{ object.id }}/change/">{{ object.item }}</a>
-        </h2>
-    <!-- 显示音标 -->
-    {% if object.category.name == '单词' %}
-        {% if object.uk_phonetic or object.us_phonetic %}
-            <div class="mt-3">
-                {% if object.uk_phonetic %}
-                    <p class="text-muted mb-1">
-                        <strong>英式音标:</strong> /{{ object.uk_phonetic }}/
-                    </p>
-                {% endif %}
-                {% if object.us_phonetic %}
-                    <p class="text-muted mb-1">
-                        <strong>美式音标:</strong> /{{ object.us_phonetic }}/
-                    </p>
-                {% endif %}
+<div class="bg-container" style="background-image: url('{% static 'img/bg-callout.jpg' %}'); background-size: cover; background-position: center; min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px 0;">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-12 col-md-10 col-lg-8">
+                <div class="card shadow-lg" style="background-color: rgba(255, 255, 255, 0.95); border-radius: 10px; overflow: hidden;">
+                    <!-- 彩色卡片头部 -->
+                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0">
+                            <i class="fa fa-book me-2"></i>
+                            <span>{{ object.item }}</span>
+                        </h4>
+                        <div>
+                            <a href="{% url 'item-edit' object.pk %}" class="btn btn-sm btn-outline-light me-2" title="编辑">
+                                <i class="fa fa-edit"></i>
+                            </a>
+                            <a href="{% url 'item-delete' object.pk %}" class="btn btn-sm btn-outline-danger" title="删除">
+                                <i class="fa fa-trash"></i>
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="card-body p-4">
+                        <!-- 音标和发音 -->
+                        {% if object.category.name == '单词' %}
+                            {% if object.uk_phonetic or object.us_phonetic or object.src_tts %}
+                                <div class="mb-3">
+                                    <h6><i class="fa fa-volume-up"></i> 发音</h6>
+                                    <div>
+                                        {% if object.uk_phonetic %}
+                                            <span class="badge bg-info me-2">英 [{{ object.uk_phonetic }}]</span>
+                                        {% endif %}
+                                        {% if object.us_phonetic %}
+                                            <span class="badge bg-info me-2">美 [{{ object.us_phonetic }}]</span>
+                                        {% endif %}
+                                        {% if object.src_tts %}
+                                            <button class="btn btn-sm btn-outline-primary" onclick="document.getElementById('audioPlayer').play()" type="button">
+                                                <i class="fa fa-play"></i> 播放发音
+                                            </button>
+                                            <audio id="audioPlayer" class="d-none">
+                                                <source src="{{ object.src_tts }}" type="audio/mpeg">
+                                            </audio>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endif %}
+                        {% endif %}
+
+                        <!-- 释义和例句 -->
+                        <div class="mb-3">
+                            <h6><i class="fa fa-book-open"></i> 释义</h6>
+                            <div class="alert alert-light">
+                                <div id="meaning-text">{{ object.content|safe }}</div>
+                            </div>
+                        </div>
+
+                        <!-- 例句区域（通过JS动态生成） -->
+                        <div class="mb-3 d-none" id="examples-section">
+                            <h6><i class="fa fa-quote-left"></i> 例句</h6>
+                            <div id="examples-container"></div>
+                        </div>
+
+                        <!-- 折叠按钮 -->
+                        <div class="text-center mb-3">
+                            <button class="btn btn-outline-secondary btn-sm" type="button" id="details-toggle-btn">
+                                <i class="fa fa-info-circle me-1"></i>
+                                <span class="toggle-text">显示详细信息</span>
+                            </button>
+                        </div>
+
+                        <!-- 可折叠的次要信息 -->
+                        <div class="collapse" id="detailsCollapse">
+                            <div class="card card-body bg-light">
+                                <div class="row">
+                                    <div class="col-md-6 mb-2">
+                                        <p class="mb-1">
+                                            <i class="fa fa-calendar-plus-o me-2 text-primary"></i>
+                                            <span class="info-label">录入日期：</span>
+                                            <span class="text-muted">{{ object.inputDate }}</span>
+                                        </p>
+                                    </div>
+                                    <div class="col-md-6 mb-2">
+                                        <p class="mb-1">
+                                            <i class="fa fa-calendar-check-o me-2 text-primary"></i>
+                                            <span class="info-label">初始日期：</span>
+                                            <span class="text-muted">{{ object.initDate }}</span>
+                                        </p>
+                                    </div>
+                                    <div class="col-md-6 mb-2">
+                                        <p class="mb-1">
+                                            <i class="fa fa-bar-chart me-2 text-success"></i>
+                                            <span class="info-label">熟练度：</span>
+                                            <span class="badge bg-{{ object.proficiency|yesno:'success,warning,danger' }}">{{ object.get_proficiency_display }}</span>
+                                        </p>
+                                    </div>
+                                    <div class="col-md-6 mb-2">
+                                        <p class="mb-1">
+                                            <i class="fa fa-tag me-2 text-info"></i>
+                                            <span class="info-label">分类：</span>
+                                            <span class="badge bg-info">{{ object.category.name }}</span>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 返回按钮 -->
+                        <div class="text-center mt-4">
+                            <a href="javascript:history.back()" class="btn btn-lg btn-primary rounded-circle" style="width: 60px; height: 60px; display: inline-flex; align-items: center; justify-content: center;" title="返回">
+                                <i class="fa fa-arrow-left fa-lg"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
             </div>
-        {% else %}
-            <p class="text-warning">未提供音标信息。</p>
-        {% endif %}
-    {% else %}
-        <!-- <p class="text-muted">此项不是单词。</p> -->
-    {% endif %}
-
-    <!-- 播放语音 -->
-    {% if object.src_tts %}
-        <div class="mt-3">
-            <audio controls>
-                <source src="{{ object.src_tts }}" type="audio/mpeg">
-                您的浏览器不支持音频播放。
-            </audio>
         </div>
-    {% endif %}
-
-    <hr>
-
-    <!-- 详细信息 -->
-    <div class="text-start">
-        <p><strong>Content:</strong></p>
-        <p style="white-space: pre-line">{{ object.content |safe}}</p>
-        <p><strong>Input Date:</strong> {{ object.inputDate }}</p>
-        <p><strong>Initial Date:</strong> {{ object.initDate }}</p>
-        <p><strong>Proficiency:</strong> {{ object.get_proficiency_display }}</p>
-        <p><strong>Category:</strong> {{ object.category.name }}</p>
-    </div>
-    <hr>
-    <!-- 返回按钮 -->
-    <div>
-        <!-- 蓝色背景按钮 -->
-        <a href="javascript:history.back()" class="back-btn blue-bg">
-            <i class="bi bi-arrow-left"></i>
-        </a>
-    </div>
     </div>
 </div>
+
+<script>
+// 等待DOM加载完成
+document.addEventListener('DOMContentLoaded', function() {
+    // 解析释义和例句
+    var meaningText = document.getElementById('meaning-text');
+    var examplesSection = document.getElementById('examples-section');
+    var examplesContainer = document.getElementById('examples-container');
+    
+    if (meaningText) {
+        var content = meaningText.textContent || meaningText.innerText;
+        var parts = content.split('例句:');
+        
+        if (parts.length > 1) {
+            // 更新释义部分（只显示释义文本）
+            meaningText.innerHTML = '<p class="mb-0">' + parts[0].trim().replace(/^释义:\s*/, '') + '</p>';
+            
+            // 显示例句部分
+            examplesSection.classList.remove('d-none');
+            
+            // 解析例句
+            var examples = parts[1].trim().split('\n');
+            var exampleHTML = '';
+            var currentExample = '';
+            
+            examples.forEach(function(line) {
+                line = line.trim();
+                if (line) {
+                    // 如果是数字开头（如"1."），表示新例句
+                    if (/^\d+\./.test(line)) {
+                        if (currentExample) {
+                            exampleHTML += '<div class="mb-2 p-2 border-start border-3 border-primary bg-light">' + currentExample + '</div>';
+                        }
+                        currentExample = '<p class="mb-1"><strong>' + line + '</strong></p>';
+                    } else {
+                        // 中文翻译
+                        currentExample += '<p class="mb-0 text-muted">' + line + '</p>';
+                    }
+                }
+            });
+            
+            // 添加最后一个例句
+            if (currentExample) {
+                exampleHTML += '<div class="mb-2 p-2 border-start border-3 border-primary bg-light">' + currentExample + '</div>';
+            }
+            
+            examplesContainer.innerHTML = exampleHTML;
+        } else {
+            // 没有例句，只显示释义
+            meaningText.innerHTML = '<p class="mb-0">' + content.trim().replace(/^释义:\s*/, '') + '</p>';
+        }
+    }
+    
+    // 手动处理折叠功能
+    var detailsToggleBtn = document.getElementById('details-toggle-btn');
+    var detailsCollapse = document.getElementById('detailsCollapse');
+    var toggleText = document.querySelector('.toggle-text');
+    
+    if (detailsToggleBtn && detailsCollapse && toggleText) {
+        detailsToggleBtn.addEventListener('click', function() {
+            var isExpanded = detailsCollapse.classList.contains('show');
+            
+            if (isExpanded) {
+                // 折叠
+                detailsCollapse.classList.remove('show');
+                toggleText.textContent = '显示详细信息';
+                this.setAttribute('aria-expanded', 'false');
+            } else {
+                // 展开
+                detailsCollapse.classList.add('show');
+                toggleText.textContent = '隐藏详细信息';
+                this.setAttribute('aria-expanded', 'true');
+            }
+        });
+    }
+});
+</script>
 {% endblock %}

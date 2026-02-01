@@ -1,0 +1,203 @@
+{% extends 'base_generic.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fa fa-edit me-2"></i>
+                        编辑单词
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <!-- DeepSeek 导入按钮 -->
+                    <div class="alert alert-info d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <i class="fa fa-lightbulb-o me-2"></i>
+                            <strong>提示：</strong>可以使用 DeepSeek AI 自动填充释义、音标和例句
+                        </div>
+                        <button type="button" class="btn btn-success btn-sm" id="deepseek-import-btn">
+                            <i class="fa fa-download me-2"></i>导入 DeepSeek
+                        </button>
+                    </div>
+                    
+                    <!-- 加载提示 -->
+                    <div class="alert alert-warning d-none" id="loading-alert">
+                        <i class="fa fa-spinner fa-spin me-2"></i>正在查询 DeepSeek API，请稍候...
+                    </div>
+                    
+                    <form method="post" id="item-form">
+                        {% csrf_token %}
+                        
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {{ form.non_field_errors }}
+                        </div>
+                        {% endif %}
+                        
+                        {% for field in form %}
+                        <div class="mb-3">
+                            <label for="{{ field.id_for_label }}" class="form-label fw-bold">
+                                {{ field.label }}
+                                {% if field.field.required %}<span class="text-danger">*</span>{% endif %}
+                            </label>
+                            {{ field }}
+                            {% if field.errors %}
+                                <div class="text-danger mt-1">
+                                    {% for error in field.errors %}
+                                        <small>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            {% if field.help_text %}
+                                <small class="form-text text-muted d-block mt-1">{{ field.help_text }}</small>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                        
+                        <hr>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'item-detail' object.pk %}" class="btn btn-secondary">
+                                <i class="fa fa-times me-2"></i>取消
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fa fa-save me-2"></i>保存修改
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* 为textarea添加更好的样式 */
+textarea.form-control {
+    min-height: 150px;
+}
+
+/* 日期输入框样式 */
+input[type="date"].form-control {
+    max-width: 300px;
+}
+
+/* select样式 */
+select.form-control {
+    max-width: 300px;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const deepseekBtn = document.getElementById('deepseek-import-btn');
+    const loadingAlert = document.getElementById('loading-alert');
+    const itemField = document.querySelector('input[name="item"]');
+    
+    if (deepseekBtn) {
+        deepseekBtn.addEventListener('click', function() {
+            const word = itemField ? itemField.value.trim() : '';
+            
+            if (!word) {
+                alert('请先输入单词名称！');
+                itemField.focus();
+                return;
+            }
+            
+            // 显示加载状态
+            deepseekBtn.disabled = true;
+            deepseekBtn.innerHTML = '<i class="fa fa-spinner fa-spin me-2"></i>查询中...';
+            loadingAlert.classList.remove('d-none');
+            
+            // 调用 DeepSeek API
+            fetch('{% url "deepseek-query" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({ word: word })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.data) {
+                    const queryData = data.data;
+                    
+                    // 填充音标
+                    const ukPhoneticField = document.querySelector('input[name="uk_phonetic"]');
+                    const usPhoneticField = document.querySelector('input[name="us_phonetic"]');
+                    
+                    if (ukPhoneticField && queryData.uk_phonetic) {
+                        ukPhoneticField.value = queryData.uk_phonetic;
+                    }
+                    if (usPhoneticField && queryData.us_phonetic) {
+                        usPhoneticField.value = queryData.us_phonetic;
+                    }
+                    
+                    // 填充TTS音频链接（使用Google TTS）
+                    const srcTtsField = document.querySelector('input[name="src_tts"]');
+                    if (srcTtsField) {
+                        srcTtsField.value = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=en&q=${encodeURIComponent(word)}`;
+                    }
+                    
+                    // 构建内容（释义 + 例句）
+                    let content = '';
+                    
+                    if (queryData.meaning) {
+                        content += '释义: ' + queryData.meaning + '\n\n';
+                    }
+                    
+                    if (queryData.example_sentences && queryData.example_sentences.length > 0) {
+                        content += '例句:\n';
+                        queryData.example_sentences.forEach((example, index) => {
+                            content += (index + 1) + '. ' + example.english + '\n';
+                            content += example.chinese + '\n';
+                            if (index < queryData.example_sentences.length - 1) {
+                                content += '\n';
+                            }
+                        });
+                    }
+                    
+                    // 填充内容
+                    const contentField = document.querySelector('textarea[name="content"]');
+                    if (contentField) {
+                        contentField.value = content;
+                    }
+                    
+                    // 显示简短的成功提示（不需要用户确认）
+                    loadingAlert.classList.remove('d-none');
+                    loadingAlert.classList.remove('alert-warning');
+                    loadingAlert.classList.add('alert-success');
+                    loadingAlert.innerHTML = '<i class="fa fa-check-circle me-2"></i>✅ 已成功导入音标、释义、例句和音频！';
+                    
+                    // 3秒后自动隐藏提示
+                    setTimeout(() => {
+                        loadingAlert.classList.add('d-none');
+                        loadingAlert.classList.remove('alert-success');
+                        loadingAlert.classList.add('alert-warning');
+                        loadingAlert.innerHTML = '<i class="fa fa-spinner fa-spin me-2"></i>正在查询 DeepSeek API，请稍候...';
+                    }, 3000);
+                    
+                } else {
+                    alert('❌ 查询失败：' + (data.error || '未知错误'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('❌ 网络错误或服务器异常');
+            })
+            .finally(() => {
+                // 恢复按钮状态
+                deepseekBtn.disabled = false;
+                deepseekBtn.innerHTML = '<i class="fa fa-download me-2"></i>导入 DeepSeek';
+                loadingAlert.classList.add('d-none');
+            });
+        });
+    }
+});
+</script>
+{% endblock %}

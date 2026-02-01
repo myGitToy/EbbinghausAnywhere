@@ -42,7 +42,21 @@
                 <a class="mx-auto service-icon rounded-circle mb-3" href="{% url 'search' %}"><i class="icon-magnifier"></i></a>
                 <h4 class="service-title"><strong>Search</strong></h4>
                 <p class="service-text mb-0 text-faded">Find the wisdom you've gained—search your learning and rediscover insights.</p>
-            </div>         
+            </div>
+        </div>
+        
+        <!-- 第二行：DeepSeek 查询功能 -->
+        <div class="row mt-3">
+            <div class="col-6 col-md-3 mb-4 mx-auto">
+                <a class="mx-auto service-icon rounded-circle mb-3 bg-gradient" href="{% url 'deepseek-query' %}" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);"><i class="icon-bulb"></i></a>
+                <h4 class="service-title"><strong>DeepSeek Query</strong></h4>
+                <p class="service-text mb-0 text-faded">AI-powered word lookup—get instant definitions, phonetics, and examples.</p>
+            </div>
+            <div class="col-6 col-md-3 mb-4 mx-auto">
+                <a class="mx-auto service-icon rounded-circle mb-3" href="{% url 'deepseek-config' %}"><i class="icon-settings"></i></a>
+                <h4 class="service-title"><strong>AI Settings</strong></h4>
+                <p class="service-text mb-0 text-faded">Configure your DeepSeek API settings for personalized learning experience.</p>
+            </div>
         </div>
     </div>
 </section>

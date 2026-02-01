@@ -196,6 +196,62 @@
                 .then(response => {
                     if (response.success) {
                         updateRowStyle(row, action, response.mastery);  // 调用 updateRowStyle
+                        
+                        // 如果是YES或NO操作，自动跳转到下一个未复习的单词
+                        if (action === 'yes' || action === 'no') {
+                            // 标记当前单词已复习
+                            row.setAttribute('data-reviewed', 'true');
+                            
+                            // 关闭当前modal
+                            const currentModalElement = document.getElementById('myModal' + wordId);
+                            const currentModal = bootstrap.Modal.getInstance(currentModalElement);
+                            if (currentModal) {
+                                currentModal.hide();
+                            }
+                            
+                            // 查找下一个未复习的单词
+                            const allRows = document.querySelectorAll('tbody tr[id^="td"]');
+                            let foundCurrent = false;
+                            let nextRow = null;
+                            
+                            for (let i = 0; i < allRows.length; i++) {
+                                if (allRows[i].id === 'td' + wordId) {
+                                    foundCurrent = true;
+                                } else if (foundCurrent && !allRows[i].getAttribute('data-reviewed')) {
+                                    nextRow = allRows[i];
+                                    break;
+                                }
+                            }
+                            
+                            // 如果没找到后面的，从头开始找第一个未复习的
+                            if (!nextRow) {
+                                for (let i = 0; i < allRows.length; i++) {
+                                    if (!allRows[i].getAttribute('data-reviewed')) {
+                                        nextRow = allRows[i];
+                                        break;
+                                    }
+                                }
+                            }
+                            
+                            // 打开下一个modal
+                            if (nextRow) {
+                                setTimeout(() => {
+                                    const nextWordId = nextRow.id.replace('td', '');
+                                    const nextModalElement = document.getElementById('myModal' + nextWordId);
+                                    const nextModal = new bootstrap.Modal(nextModalElement);
+                                    nextModal.show();
+                                }, 300); // 延迟300ms确保当前modal完全关闭
+                            } else {
+                                // 没有更多单词，清除可能残留的backdrop
+                                setTimeout(() => {
+                                    const backdrops = document.querySelectorAll('.modal-backdrop');
+                                    backdrops.forEach(backdrop => backdrop.remove());
+                                    document.body.classList.remove('modal-open');
+                                    document.body.style.overflow = '';
+                                    document.body.style.paddingRight = '';
+                                }, 300);
+                            }
+                        }
                     } else {
                         alert("操作失败：" + response.message);
                     }

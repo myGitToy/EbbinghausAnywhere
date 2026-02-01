@@ -54,3 +54,26 @@ jobs:
           tags: |
             ${{ secrets.DOCKER_USERNAME }}/EAW:${{ github.sha }}
             ${{ secrets.DOCKER_USERNAME }}/EAW:latest
+
+  build-for-prs:
+    name: Build (PR / fork safe)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image (no push)
+        run: |
+          IMAGE_TAG="eaw-pr-${{ github.sha }}"
+          docker build -t "$IMAGE_TAG" .
+          docker save "$IMAGE_TAG" -o "./${IMAGE_TAG}.tar"
+
+      - name: Upload image tar artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image-${{ github.sha }}
+          path: ./eaw-pr-${{ github.sha }}.tar

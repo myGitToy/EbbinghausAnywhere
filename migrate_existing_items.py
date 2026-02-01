@@ -32,25 +32,24 @@ def migrate_items():
         if item.initDate and item.inputDate:
             days_since_init = (datetime.today().date() - item.initDate).days
             
-            # 根据天数确定应该处于哪个复习间隔
-            current_interval = 0
+            # 根据天数确定应该处于哪个复习间隔（索引）
+            current_idx = 0
             for i, interval in enumerate(REVIEW_INTERVALS):
                 if days_since_init >= interval:
-                    current_interval = i
+                    current_idx = i
                 else:
                     break
-            
-            # 设置新字段
-            item.current_interval = current_interval
-            
-            # 计算下次复习日期
-            if current_interval < len(REVIEW_INTERVALS) - 1:
-                # 还未到最后一个间隔，计算下次复习日期
-                next_interval_days = REVIEW_INTERVALS[current_interval]
+
+            # 将 current_interval 存为间隔天数字段（兼容视图中的 intervals.index 用法）
+            item.current_interval = REVIEW_INTERVALS[current_idx]
+
+            # 计算下次复习日期：使用下一个间隔的天数作为 next_review_date
+            if current_idx < len(REVIEW_INTERVALS) - 1:
+                next_interval_days = REVIEW_INTERVALS[current_idx + 1]
                 item.next_review_date = item.initDate + timedelta(days=next_interval_days)
             else:
-                # 已经到了最后一个间隔（Day 365），设置为一年后
-                item.next_review_date = item.initDate + timedelta(days=365)
+                # 已经是最后一个间隔，保持为最后一个间隔的日期
+                item.next_review_date = item.initDate + timedelta(days=REVIEW_INTERVALS[-1])
             
             # 初始化其他字段
             item.unfamiliar_history = []

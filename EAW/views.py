@@ -276,6 +276,65 @@ class ItemDetailView(DetailView):
             return render(self.request, 'EAW/item_not_found.html', status=404)
         return obj
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        item = context.get('object')
+        from datetime import date, timedelta
+
+        # 与其他地方保持一致的间隔定义
+        intervals = [0, 1, 2, 4, 7, 15, 30, 90, 180]
+
+        # 基准日期：优先使用 initDate，否则使用 inputDate，若都无则使用今天
+        base_date = item.initDate or item.inputDate or date.today()
+
+        # unfamiliar_history 可能为 None
+        uh = item.unfamiliar_history or []
+
+        schedule = []
+        today = date.today()
+        # 计算当前的索引（如果 current_interval 存的是天数）
+        try:
+            current_index = intervals.index(item.current_interval) if item.current_interval is not None else None
+        except ValueError:
+            current_index = None
+
+        for idx, days in enumerate(intervals):
+            scheduled_date = None
+            try:
+                scheduled_date = base_date + timedelta(days=days)
+            except Exception:
+                scheduled_date = None
+
+            # 是否已完成：根据 current_index（interval 的索引）判断
+            completed = False
+            if current_index is not None and current_index > idx:
+                completed = True
+
+            # 是否逾期（已过计划日但未完成）
+            overdue = False
+            if scheduled_date and scheduled_date < today and not completed:
+                overdue = True
+
+            # 熟悉判断：如果 completed 并且 unfamiliar_history 中没有该 interval 的记录，则视为熟悉
+            unfamiliar_records = [r for r in uh if r.get('interval') == days or r.get('interval') == idx]
+            if completed:
+                familiar = (len(unfamiliar_records) == 0)
+            else:
+                familiar = None
+
+            schedule.append({
+                'index': idx,
+                'days': days,
+                'scheduled_date': scheduled_date,
+                'completed': completed,
+                'overdue': overdue,
+                'familiar': familiar,
+                'unfamiliar_records': unfamiliar_records,
+            })
+
+        context['review_schedule'] = schedule
+        return context
+
 
 @method_decorator(login_required, name='dispatch')
 class ItemUpdateView(generic.UpdateView):
@@ -427,6 +486,19 @@ def ReviewView(request, year, month, day):
                 1 for record in item.unfamiliar_history 
                 if record.get('interval') == item.current_interval
             )
+
+        # 如果该 item 在今天已经被点评（unfamiliar_history 里有今天的记录），则跳过不再显示
+        reviewed_today = False
+        if item.unfamiliar_history:
+            for record in item.unfamiliar_history:
+                try:
+                    if record.get('date') == reviewDate.isoformat():
+                        reviewed_today = True
+                        break
+                except Exception:
+                    continue
+        if reviewed_today:
+            continue
         
         # 计算如果点YES，下次复习日期是什么
         next_review_after_yes = None

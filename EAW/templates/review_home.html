@@ -16,9 +16,32 @@
                     <div class="card-body">
                         <form id="reviewForm" action="" method="post" enctype="multipart/form-data" autocomplete="off" onsubmit="return loadReviewContent();">
                             {% csrf_token %}
-                            <div class="input-group">
+                            <div class="input-group mb-3">
                                 <input type="text" id="id_review_date" name="review_date" class="form-control" placeholder="YYYY-MM-DD">
                                 <button type="submit" class="btn btn-primary">Review</button>
+                            </div>
+                            
+                            <!-- Options Row -->
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="show_mastered" name="show_mastered">
+                                        <label class="form-check-label" for="show_mastered">
+                                            显示已掌握单词
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="d-flex align-items-center">
+                                        <label for="per_page" class="me-2 mb-0">每页显示:</label>
+                                        <select class="form-select form-select-sm" id="per_page" name="per_page" style="width: auto;">
+                                            <option value="10" selected>10</option>
+                                            <option value="20">20</option>
+                                            <option value="50">50</option>
+                                            <option value="100">100</option>
+                                        </select>
+                                    </div>
+                                </div>
                             </div>
                         </form>
                     </div>
@@ -52,6 +75,22 @@
             dateFormat: "Y-m-d",      // 设置日期格式
             defaultDate: today        // 将当天日期设置为默认值
         });
+        
+        // 为checkbox添加change事件监听器
+        document.getElementById('show_mastered').addEventListener('change', function() {
+            const reviewDate = document.getElementById('id_review_date').value;
+            if (reviewDate) {
+                loadReviewContent();
+            }
+        });
+        
+        // 为下拉框添加change事件监听器
+        document.getElementById('per_page').addEventListener('change', function() {
+            const reviewDate = document.getElementById('id_review_date').value;
+            if (reviewDate) {
+                loadReviewContent();
+            }
+        });
     };
 
     // 更新行样式的函数
@@ -83,6 +122,8 @@
     // 动态加载复习内容
     function loadReviewContent() {
         const reviewDate = document.getElementById("id_review_date").value;
+        const showMastered = document.getElementById("show_mastered").checked;
+        const perPage = document.getElementById("per_page").value;
 
         // 检查日期是否有效
         if (!reviewDate) {
@@ -90,8 +131,14 @@
             return false; // 阻止表单提交
         }
 
+        // 构建URL参数
+        const params = new URLSearchParams({
+            show_mastered: showMastered,
+            per_page: perPage
+        });
+
         // 发起 AJAX 请求加载复习内容
-        const url = `/review/${reviewDate}`;
+        const url = `/review/${reviewDate}?${params.toString()}`;
         fetch(url, {
             method: 'GET',
             headers: {
@@ -127,7 +174,7 @@
     function bindReviewDayEvents() {
         console.log("Binding events for feedback buttons...");
         
-        // 绑定按钮点击事件
+        // 绑定反馈按钮点击事件
         document.querySelectorAll('.feedback-btn').forEach(button => {
             button.addEventListener('click', function (event) {
                 const button = event.target;
@@ -155,6 +202,56 @@
                 })
                 .catch(error => {
                     console.error("Error:", error);
+                });
+            });
+        });
+        
+        // 绑定分页链接点击事件
+        document.querySelectorAll('.pagination-link').forEach(link => {
+            link.addEventListener('click', function(event) {
+                event.preventDefault();
+                const page = event.target.getAttribute('data-page');
+                const reviewDate = document.getElementById('id_review_date').value;
+                const showMastered = document.getElementById('show_mastered').checked;
+                const perPage = document.getElementById('per_page').value;
+                
+                // 构建URL参数
+                const params = new URLSearchParams({
+                    show_mastered: showMastered,
+                    per_page: perPage,
+                    page: page
+                });
+                
+                // 发起 AJAX 请求加载指定页的内容
+                const url = `/review/${reviewDate}?${params.toString()}`;
+                fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(response => {
+                    if (response.ok) return response.text();
+                    throw new Error('加载分页内容失败');
+                })
+                .then(html => {
+                    const reviewContentDiv = document.getElementById('reviewContent');
+                    reviewContentDiv.innerHTML = html;
+                    
+                    // 重新绑定事件
+                    bindReviewDayEvents();
+                    
+                    // 手动触发 MathJax 渲染
+                    if (window.MathJax) {
+                        MathJax.typeset();
+                    }
+                    
+                    // 滚动到顶部
+                    reviewContentDiv.scrollIntoView({ behavior: 'smooth' });
+                })
+                .catch(error => {
+                    console.error(error);
+                    alert('加载失败，请稍后重试');
                 });
             });
         });

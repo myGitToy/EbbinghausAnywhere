@@ -309,6 +309,13 @@ class ItemDetailView(DetailView):
             completed = False
             if current_index is not None and current_index > idx:
                 completed = True
+            else:
+                # 如果在 unfamiliar_history 中存在针对该间隔、且日期等于计划日期的记录（用户已点评，无论 YES/NO），视为已完成
+                try:
+                    if scheduled_date and any(((r.get('interval') == days or r.get('interval') == idx) and r.get('date') == scheduled_date.isoformat()) for r in uh):
+                        completed = True
+                except Exception:
+                    pass
 
             # 是否逾期（已过计划日但未完成）
             overdue = False
@@ -631,21 +638,38 @@ def ReviewFeedbackYes(request):
                         # 已经是最后一个间隔（Day 365），保持365天周期
                         curword.next_review_date = review_date + timedelta(days=365)
                 except ValueError:
-                    # 如果current_interval不在列表中，重置为Day 0，下次是明天Day 1
+                    # 如果current_interval不在列表中，按保守策略重置为Day 1，并且不尝试删除历史记录
                     curword.current_interval = 1
                     curword.next_review_date = review_date + timedelta(days=1)
-                
-                # 清除额外复习标记，并仅移除与刚完成周期相关的不熟悉记录（保留其它周期历史）
+
+                # 清除额外复习标记
                 curword.needs_extra_review = False
                 curword.extra_review_since = None
+
+                # 仅在成功解析出本次周期标识时，才从 unfamiliar_history 中移除对应记录；否则保留原记录
                 try:
                     uh = curword.unfamiliar_history or []
-                    # current_interval_value / current_index 表示刚完成的周期（在上面已定义）
-                    filtered = [r for r in uh if r.get('interval') != current_interval_value and r.get('interval') != current_index]
-                    curword.unfamiliar_history = filtered
+                    # 仅在解析到本次周期标识时进行有选择地移除；使用类型安全的比较
+                    if 'current_interval_value' in locals() or 'current_index' in locals():
+                        civ = locals().get('current_interval_value')
+                        cidx = locals().get('current_index')
+
+                        def matches_cycle(rec_val, civ_val, cidx_val):
+                            try:
+                                # 尝试以整数比较
+                                rv = int(rec_val)
+                            except Exception:
+                                rv = rec_val
+                            return rv == civ_val or rv == cidx_val
+
+                        filtered = [r for r in uh if not matches_cycle(r.get('interval'), civ, cidx)]
+                        curword.unfamiliar_history = filtered
+                    else:
+                        # 未能解析周期标识，保留原始历史以避免误删
+                        curword.unfamiliar_history = uh
                 except Exception:
-                    # 如果发生错误，作为回退直接清空历史以保证一致性
-                    curword.unfamiliar_history = []
+                    # 出现任何意外时，保留原始历史（不要盲目清空）
+                    pass
             else:
                 # 只是额外复习：清除额外复习标记，正式日期不变
                 pass

@@ -507,18 +507,18 @@ def ReviewView(request, year, month, day):
             except Exception:
                 unfamiliar_count = 0
 
-        # 如果该 item 在今天已经被点评（unfamiliar_history 里有今天的记录），则跳过不再显示
+        # 如果该 item 在今天已经被点评（unfamiliar_history 里有今天的记录），则标记为已点评但仍显示
         reviewed_today = False
+        last_review_type = None
         if item.unfamiliar_history:
             for record in item.unfamiliar_history:
                 try:
                     if record.get('date') == reviewDate.isoformat():
                         reviewed_today = True
+                        last_review_type = record.get('review_type')
                         break
                 except Exception:
                     continue
-        if reviewed_today:
-            continue
         
         # 计算如果点YES，下次复习日期是什么
         next_review_after_yes = None
@@ -554,6 +554,8 @@ def ReviewView(request, year, month, day):
             'is_regular': is_regular,
             'is_extra': is_extra,
             'unfamiliar_count': unfamiliar_count,
+            'reviewed_today': reviewed_today,
+            'last_review_type': last_review_type,
             'detail_url': detail_url
         })
     
@@ -652,12 +654,28 @@ def ReviewFeedbackYes(request):
             curword.needs_extra_review = False
             curword.extra_review_since = None
             
+            # 幂等性：如果当天已存在相同日期的记录，返回已点评信息而不重复修改
+            try:
+                if curword.unfamiliar_history:
+                    for r in curword.unfamiliar_history:
+                        if r.get('date') == review_date.isoformat():
+                            curword.save()
+                            return JsonResponse({
+                                'success': True,
+                                'message': 'Already reviewed today',
+                                'mastery': curword.get_proficiency_display(),
+                                'reviewed_today': True,
+                            })
+            except Exception:
+                pass
+
             curword.save()
 
             return JsonResponse({
                 'success': True,
                 'message': 'Proficiency updated to MASTERED.',
-                'mastery': curword.get_proficiency_display()
+                'mastery': curword.get_proficiency_display(),
+                'reviewed_today': True,
             })
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)})
@@ -706,20 +724,35 @@ def ReviewFeedbackNo(request):
             except Exception:
                 interval_value = curword.current_interval
 
-            curword.unfamiliar_history.append({
-                "date": review_date.isoformat(),
-                "interval": interval_value,
-                "review_type": "regular" if is_regular_review else "extra"
-            })
+            # 在添加前检查是否已存在当天的记录以保证幂等性
+            exists_today = False
+            try:
+                if curword.unfamiliar_history:
+                    for r in curword.unfamiliar_history:
+                        if r.get('date') == review_date.isoformat():
+                            exists_today = True
+                            break
+            except Exception:
+                exists_today = False
+
+            if not exists_today:
+                curword.unfamiliar_history.append({
+                    "date": review_date.isoformat(),
+                    "interval": interval_value,
+                    "review_type": "regular" if is_regular_review else "extra"
+                })
             
             # 更新 proficiency 为 UNFAMILIAR
             curword.proficiency = Proficiency.UNFAMILIAR
             
-            # 统计当前周期的不熟悉次数
-            current_cycle_count = sum(
-                1 for record in curword.unfamiliar_history 
-                if record.get('interval') == curword.current_interval
-            )
+            # 统计当前周期的不熟悉次数（基于规范化的 interval_value）
+            try:
+                current_cycle_count = sum(
+                    1 for record in curword.unfamiliar_history
+                    if record.get('interval') == interval_value
+                )
+            except Exception:
+                current_cycle_count = 0
             
             message = 'Proficiency updated to UNFAMILIAR.'
             
@@ -745,11 +778,16 @@ def ReviewFeedbackNo(request):
             
             curword.save()
 
-            return JsonResponse({
+            # 如果当天已存在记录，向前端说明为已点评
+            resp = {
                 'success': True,
                 'message': message,
-                'mastery': curword.get_proficiency_display()
-            })
+                'mastery': curword.get_proficiency_display(),
+                'unfamiliar_count': current_cycle_count,
+                'reviewed_today': exists_today or True,
+            }
+
+            return JsonResponse(resp)
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)})
 

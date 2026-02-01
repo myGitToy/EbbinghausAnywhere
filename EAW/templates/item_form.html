@@ -1,0 +1,78 @@
+{% extends 'base_generic.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fa fa-edit me-2"></i>
+                        编辑单词
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {{ form.non_field_errors }}
+                        </div>
+                        {% endif %}
+                        
+                        {% for field in form %}
+                        <div class="mb-3">
+                            <label for="{{ field.id_for_label }}" class="form-label fw-bold">
+                                {{ field.label }}
+                                {% if field.field.required %}<span class="text-danger">*</span>{% endif %}
+                            </label>
+                            {{ field }}
+                            {% if field.errors %}
+                                <div class="text-danger mt-1">
+                                    {% for error in field.errors %}
+                                        <small>{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            {% if field.help_text %}
+                                <small class="form-text text-muted d-block mt-1">{{ field.help_text }}</small>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                        
+                        <hr>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'item-detail' object.pk %}" class="btn btn-secondary">
+                                <i class="fa fa-times me-2"></i>取消
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fa fa-save me-2"></i>保存修改
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* 为textarea添加更好的样式 */
+textarea.form-control {
+    min-height: 150px;
+}
+
+/* 日期输入框样式 */
+input[type="date"].form-control {
+    max-width: 300px;
+}
+
+/* select样式 */
+select.form-control {
+    max-width: 300px;
+}
+</style>
+{% endblock %}

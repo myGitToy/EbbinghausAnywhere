@@ -64,7 +64,7 @@
 
                         <!-- 折叠按钮 -->
                         <div class="text-center mb-3">
-                            <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#detailsCollapse" aria-expanded="false" aria-controls="detailsCollapse">
+                            <button class="btn btn-outline-secondary btn-sm" type="button" id="details-toggle-btn">
                                 <i class="fa fa-info-circle me-1"></i>
                                 <span class="toggle-text">显示详细信息</span>
                             </button>
@@ -171,25 +171,25 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // 折叠功能
-    var collapseElement = document.getElementById('detailsCollapse');
-    var toggleButton = document.querySelector('[data-bs-target="#detailsCollapse"]');
+    // 手动处理折叠功能
+    var detailsToggleBtn = document.getElementById('details-toggle-btn');
+    var detailsCollapse = document.getElementById('detailsCollapse');
     var toggleText = document.querySelector('.toggle-text');
     
-    if (collapseElement && toggleText) {
-        // 监听展开事件
-        collapseElement.addEventListener('shown.bs.collapse', function () {
-            toggleText.textContent = '隐藏详细信息';
-            if (toggleButton) {
-                toggleButton.setAttribute('aria-expanded', 'true');
-            }
-        });
-        
-        // 监听收起事件
-        collapseElement.addEventListener('hidden.bs.collapse', function () {
-            toggleText.textContent = '显示详细信息';
-            if (toggleButton) {
-                toggleButton.setAttribute('aria-expanded', 'false');
+    if (detailsToggleBtn && detailsCollapse && toggleText) {
+        detailsToggleBtn.addEventListener('click', function() {
+            var isExpanded = detailsCollapse.classList.contains('show');
+            
+            if (isExpanded) {
+                // 折叠
+                detailsCollapse.classList.remove('show');
+                toggleText.textContent = '显示详细信息';
+                this.setAttribute('aria-expanded', 'false');
+            } else {
+                // 展开
+                detailsCollapse.classList.add('show');
+                toggleText.textContent = '隐藏详细信息';
+                this.setAttribute('aria-expanded', 'true');
             }
         });
     }

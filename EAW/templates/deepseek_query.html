@@ -113,14 +113,14 @@
                         <!-- 原始 JSON 数据（可折叠） -->
                         <div class="accordion" id="jsonAccordion">
                             <div class="accordion-item">
-                                <h2 class="accordion-header">
-                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#jsonCollapse">
-                                        <i class="fa fa-code"></i> 查看原始 JSON 数据
+                                <h2 class="accordion-header" id="jsonHeading">
+                                    <button class="accordion-button collapsed" type="button" id="json-toggle-btn">
+                                        <i class="fa fa-code me-2"></i> 查看原始 JSON 数据
                                     </button>
                                 </h2>
-                                <div id="jsonCollapse" class="accordion-collapse collapse" data-bs-parent="#jsonAccordion">
+                                <div id="jsonCollapse" class="accordion-collapse collapse">
                                     <div class="accordion-body">
-                                        <pre id="json-display" class="bg-dark text-light p-3 rounded"><code></code></pre>
+                                        <pre id="json-display" class="bg-dark text-light p-3 rounded" style="max-height: 400px; overflow-y: auto;"><code></code></pre>
                                     </div>
                                 </div>
                             </div>
@@ -268,11 +268,46 @@ function displayResult(word, data) {
     }
     
     // 显示原始 JSON
-    document.getElementById('json-display').textContent = JSON.stringify(data, null, 2);
+    const jsonDisplay = document.getElementById('json-display');
+    const jsonCode = jsonDisplay.querySelector('code');
+    if (jsonCode) {
+        jsonCode.textContent = JSON.stringify(data, null, 2);
+    } else {
+        jsonDisplay.innerHTML = '<code>' + JSON.stringify(data, null, 2) + '</code>';
+    }
     
     // 显示结果容器
     resultContainer.classList.remove('d-none');
+    
+    // 重置JSON折叠状态为关闭
+    const jsonCollapse = document.getElementById('jsonCollapse');
+    const jsonToggleBtn = document.getElementById('json-toggle-btn');
+    jsonCollapse.classList.remove('show');
+    jsonToggleBtn.classList.add('collapsed');
+    jsonToggleBtn.setAttribute('aria-expanded', 'false');
 }
+
+// 手动处理JSON折叠按钮点击事件
+document.addEventListener('click', function(e) {
+    const btn = e.target.closest('#json-toggle-btn');
+    if (btn) {
+        e.preventDefault();
+        const jsonCollapse = document.getElementById('jsonCollapse');
+        const isExpanded = jsonCollapse.classList.contains('show');
+        
+        if (isExpanded) {
+            // 折叠
+            jsonCollapse.classList.remove('show');
+            btn.classList.add('collapsed');
+            btn.setAttribute('aria-expanded', 'false');
+        } else {
+            // 展开
+            jsonCollapse.classList.add('show');
+            btn.classList.remove('collapsed');
+            btn.setAttribute('aria-expanded', 'true');
+        }
+    }
+});
 
 // 播放音频
 document.getElementById('play-audio-btn').addEventListener('click', function() {
@@ -338,6 +373,13 @@ document.getElementById('clear-btn').addEventListener('click', function() {
     document.getElementById('word-input').value = '';
     currentWord = '';
     currentData = null;
+    
+    // 重置折叠状态
+    const jsonCollapse = document.getElementById('jsonCollapse');
+    const bsCollapse = bootstrap.Collapse.getInstance(jsonCollapse);
+    if (bsCollapse) {
+        bsCollapse.hide();
+    }
 });
 </script>
 {% endblock %}

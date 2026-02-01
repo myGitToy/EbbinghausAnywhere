@@ -1,6 +1,12 @@
-#打包镜像文件命令
-docker build -t ewa:0.0.4 .
+# 打包步骤
 
+# 1. 打包镜像文件命令（本地）
+docker build -t ewa:0.0.5 .
+
+# 2. 打包镜像（公有）
+docker tag ewa:0.0.5 ghuiqiao711/ewa:0.0.5
+
+# 3. 推送 Push
 # 查看日志
 docker-compose logs -f web
 

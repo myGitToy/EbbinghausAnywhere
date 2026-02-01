@@ -103,6 +103,52 @@
                                         </p>
                                     </div>
                                 </div>
+                                <!-- 复习计划表 -->
+                                <div class="row mt-3">
+                                    <div class="col-12">
+                                        <h6><i class="fa fa-calendar"></i> 完整复习计划</h6>
+                                        <div class="table-responsive">
+                                            <table class="table table-sm table-striped">
+                                                <thead>
+                                                    <tr>
+                                                        <th>序号</th>
+                                                        <th>间隔 (天)</th>
+                                                        <th>计划日期</th>
+                                                        <th>状态</th>
+                                                        <th>是否熟悉</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for row in review_schedule %}
+                                                    <tr>
+                                                        <td>{{ forloop.counter }}</td>
+                                                        <td>Day {{ row.days }}</td>
+                                                        <td>{% if row.scheduled_date %}{{ row.scheduled_date }}{% else %}-{% endif %}</td>
+                                                        <td>
+                                                            {% if row.completed %}
+                                                                <span class="badge bg-success">已完成</span>
+                                                            {% elif row.overdue %}
+                                                                <span class="badge bg-danger">逾期</span>
+                                                            {% else %}
+                                                                <span class="badge bg-secondary">待复习</span>
+                                                            {% endif %}
+                                                        </td>
+                                                        <td>
+                                                            {% if row.familiar == True %}
+                                                                <span class="text-success">熟悉</span>
+                                                            {% elif row.familiar == False %}
+                                                                <span class="text-danger">不熟悉</span>
+                                                            {% else %}
+                                                                -
+                                                            {% endif %}
+                                                        </td>
+                                                    </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 

@@ -23,7 +23,8 @@
                             
                             <!-- Options Row -->
                             <div class="row g-3">
-                                <div class="col-md-6">
+                                <!-- checkbox暂时隐藏，因为新逻辑中只要到了复习日期就应该显示 -->
+                                <div class="col-md-6" style="display: none;">
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" id="show_mastered" name="show_mastered">
                                         <label class="form-check-label" for="show_mastered">
@@ -31,7 +32,7 @@
                                         </label>
                                     </div>
                                 </div>
-                                <div class="col-md-6">
+                                <div class="col-md-12">
                                     <div class="d-flex align-items-center">
                                         <label for="per_page" class="me-2 mb-0">每页显示:</label>
                                         <select class="form-select form-select-sm" id="per_page" name="per_page" style="width: auto;">
@@ -181,7 +182,17 @@
                 const wordId = button.getAttribute('data-id');
                 const action = button.getAttribute('data-action');
                 const row = document.getElementById(`td${wordId}`);
-                const data = JSON.stringify({ id: wordId, date: '{{ reviewdate }}' });
+                
+                // 如果是RESET操作，先弹出确认对话框
+                if (action === 'reset') {
+                    if (!confirm('确认要重新开始复习周期吗？这将清除所有学习记录。')) {
+                        return; // 用户取消操作
+                    }
+                }
+                
+                // 从日期选择器获取当前选择的日期，而不是使用模板变量
+                const currentReviewDate = document.getElementById("id_review_date").value;
+                const data = JSON.stringify({ id: wordId, date: currentReviewDate });
 
                 // 通用 POST 请求处理
                 fetch(`/review-feedback/${action}/`, {
@@ -195,8 +206,6 @@
                 .then(response => response.json())
                 .then(response => {
                     if (response.success) {
-                        updateRowStyle(row, action, response.mastery);  // 调用 updateRowStyle
-                        
                         // 如果是YES或NO操作，自动跳转到下一个未复习的单词
                         if (action === 'yes' || action === 'no') {
                             // 标记当前单词已复习
@@ -242,15 +251,26 @@
                                     nextModal.show();
                                 }, 300); // 延迟300ms确保当前modal完全关闭
                             } else {
-                                // 没有更多单词，清除可能残留的backdrop
+                                // 没有更多单词，清除可能残留的backdrop并重新加载内容
                                 setTimeout(() => {
                                     const backdrops = document.querySelectorAll('.modal-backdrop');
                                     backdrops.forEach(backdrop => backdrop.remove());
                                     document.body.classList.remove('modal-open');
                                     document.body.style.overflow = '';
                                     document.body.style.paddingRight = '';
+                                    
+                                    // 重新加载内容以刷新日期
+                                    loadReviewContent();
                                 }, 300);
                             }
+                        } else if (action === 'reset') {
+                            // RESET操作后更新样式并重新加载内容
+                            updateRowStyle(row, action, response.mastery);
+                            setTimeout(() => {
+                                loadReviewContent();
+                            }, 500);
+                        } else {
+                            updateRowStyle(row, action, response.mastery);
                         }
                     } else {
                         alert("操作失败：" + response.message);

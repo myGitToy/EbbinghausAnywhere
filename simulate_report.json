@@ -1,0 +1,288 @@
+{
+  "total": 20,
+  "items": [
+    {
+      "id": 16,
+      "item": "sim_word_1",
+      "initDate": "2026-01-11",
+      "inputDate": "2026-01-11",
+      "current_interval": 90,
+      "next_review_date": "2026-04-21",
+      "proficiency": "Mastered",
+      "needs_extra_review": false,
+      "unfamiliar_count": 0,
+      "unfamiliar_history": [],
+      "finished": false
+    },
+    {
+      "id": 17,
+      "item": "sim_word_2",
+      "initDate": "2026-01-18",
+      "inputDate": "2026-01-18",
+      "current_interval": 180,
+      "next_review_date": "2026-07-23",
+      "proficiency": "Mastered",
+      "needs_extra_review": false,
+      "unfamiliar_count": 0,
+      "unfamiliar_history": [],
+      "finished": true
+    },
+    {
+      "id": 18,
+      "item": "sim_word_3",
+      "initDate": "2026-01-23",
+      "inputDate": "2026-01-23",
+      "current_interval": 0,
+      "next_review_date": "2026-02-07",
+      "proficiency": "Unfamiliar",
+      "needs_extra_review": true,
+      "unfamiliar_count": 1,
+      "unfamiliar_history": [
+        {
+          "date": "2026-02-08",
+          "interval": 0,
+          "review_type": "regular"
+        }
+      ],
+      "finished": false
+    },
+    {
+      "id": 19,
+      "item": "sim_word_4",
+      "initDate": "2026-01-31",
+      "inputDate": "2026-01-31",
+      "current_interval": 4,
+      "next_review_date": "2026-02-26",
+      "proficiency": "Mastered",
+      "needs_extra_review": false,
+      "unfamiliar_count": 0,
+      "unfamiliar_history": [],
+      "finished": false
+    },
+    {
+      "id": 20,
+      "item": "sim_word_5",
+      "initDate": "2026-01-24",
+      "inputDate": "2026-01-24",
+      "current_interval": 180,
+      "next_review_date": "2026-07-30",
+      "proficiency": "Mastered",
+      "needs_extra_review": false,
+      "unfamiliar_count": 0,
+      "unfamiliar_history": [],
+      "finished": true
+    },
+    {
+      "id": 21,
+      "item": "sim_word_6",
+      "initDate": "2026-01-24",
+      "inputDate": "2026-01-24",
+      "current_interval": 90,
+      "next_review_date": "2026-04-26",
+      "proficiency": "Mastered",
+      "needs_extra_review": false,
+      "unfamiliar_count": 0,
+      "unfamiliar_history": [],
+      "finished": false
+    },
+    {
+      "id": 22,
+      "item": "sim_word_7",
+      "initDate": "2026-01-17",
+      "inputDate": "2026-01-17",
+      "current_interval": 4,
+      "next_review_date": "2026-02-04",
+      "proficiency": "Mastered",
+      "needs_extra_review": false,
+      "unfamiliar_count": 0,
+      "unfamiliar_history": [],
+      "finished": false
+    },
+    {
+      "id": 23,
+      "item": "sim_word_8",
+      "initDate": "2026-01-22",
+      "inputDate": "2026-01-22",
+      "current_interval": 180,
+      "next_review_date": "2026-07-28",
+      "proficiency": "Mastered",
+      "needs_extra_review": false,
+      "unfamiliar_count": 0,
+      "unfamiliar_history": [],
+      "finished": true
+    },
+    {
+      "id": 24,
+      "item": "sim_word_9",
+      "initDate": "2026-01-24",
+      "inputDate": "2026-01-24",
+      "current_interval": 1,
+      "next_review_date": "2026-03-04",
+      "proficiency": "Mastered",
+      "needs_extra_review": false,
+      "unfamiliar_count": 0,
+      "unfamiliar_history": [],
+      "finished": false
+    },
+    {
+      "id": 25,
+      "item": "sim_word_10",
+      "initDate": "2026-01-14",
+      "inputDate": "2026-01-14",
+      "current_interval": 180,
+      "next_review_date": "2026-07-23",
+      "proficiency": "Mastered",
+      "needs_extra_review": false,
+      "unfamiliar_count": 0,
+      "unfamiliar_history": [],
+      "finished": true
+    },
+    {
+      "id": 26,
+      "item": "sim_word_1",
+      "initDate": "2026-01-19",
+      "inputDate": "2026-01-19",
+      "current_interval": 1,
+      "next_review_date": "2026-01-30",
+      "proficiency": "Mastered",
+      "needs_extra_review": false,
+      "unfamiliar_count": 0,
+      "unfamiliar_history": [],
+      "finished": false
+    },
+    {
+      "id": 27,
+      "item": "sim_word_2",
+      "initDate": "2026-01-03",
+      "inputDate": "2026-01-03",
+      "current_interval": 30,
+      "next_review_date": "2026-02-10",
+      "proficiency": "Unfamiliar",
+      "needs_extra_review": true,
+      "unfamiliar_count": 1,
+      "unfamiliar_history": [
+        {
+          "date": "2026-02-10",
+          "interval": 30,
+          "review_type": "regular"
+        }
+      ],
+      "finished": false
+    },
+    {
+      "id": 28,
+      "item": "sim_word_3",
+      "initDate": "2026-01-15",
+      "inputDate": "2026-01-15",
+      "current_interval": 180,
+      "next_review_date": "2026-07-22",
+      "proficiency": "Mastered",
+      "needs_extra_review": false,
+      "unfamiliar_count": 0,
+      "unfamiliar_history": [],
+      "finished": true
+    },
+    {
+      "id": 29,
+      "item": "sim_word_4",
+      "initDate": "2026-01-17",
+      "inputDate": "2026-01-17",
+      "current_interval": 4,
+      "next_review_date": "2026-02-18",
+      "proficiency": "Mastered",
+      "needs_extra_review": false,
+      "unfamiliar_count": 0,
+      "unfamiliar_history": [],
+      "finished": false
+    },
+    {
+      "id": 30,
+      "item": "sim_word_5",
+      "initDate": "2026-01-17",
+      "inputDate": "2026-01-17",
+      "current_interval": 90,
+      "next_review_date": "2026-04-21",
+      "proficiency": "Unfamiliar",
+      "needs_extra_review": true,
+      "unfamiliar_count": 1,
+      "unfamiliar_history": [
+        {
+          "date": "2026-04-21",
+          "interval": 90,
+          "review_type": "regular"
+        }
+      ],
+      "finished": false
+    },
+    {
+      "id": 31,
+      "item": "sim_word_6",
+      "initDate": "2026-01-28",
+      "inputDate": "2026-01-28",
+      "current_interval": 180,
+      "next_review_date": "2026-08-06",
+      "proficiency": "Mastered",
+      "needs_extra_review": false,
+      "unfamiliar_count": 0,
+      "unfamiliar_history": [],
+      "finished": true
+    },
+    {
+      "id": 32,
+      "item": "sim_word_7",
+      "initDate": "2026-01-31",
+      "inputDate": "2026-01-31",
+      "current_interval": 180,
+      "next_review_date": "2026-08-07",
+      "proficiency": "Mastered",
+      "needs_extra_review": false,
+      "unfamiliar_count": 0,
+      "unfamiliar_history": [],
+      "finished": true
+    },
+    {
+      "id": 33,
+      "item": "sim_word_8",
+      "initDate": "2026-01-16",
+      "inputDate": "2026-01-16",
+      "current_interval": 90,
+      "next_review_date": "2026-04-28",
+      "proficiency": "Mastered",
+      "needs_extra_review": false,
+      "unfamiliar_count": 0,
+      "unfamiliar_history": [],
+      "finished": false
+    },
+    {
+      "id": 34,
+      "item": "sim_word_9",
+      "initDate": "2026-01-15",
+      "inputDate": "2026-01-15",
+      "current_interval": 180,
+      "next_review_date": "2026-07-25",
+      "proficiency": "Mastered",
+      "needs_extra_review": false,
+      "unfamiliar_count": 0,
+      "unfamiliar_history": [],
+      "finished": true
+    },
+    {
+      "id": 35,
+      "item": "sim_word_10",
+      "initDate": "2026-01-04",
+      "inputDate": "2026-01-04",
+      "current_interval": 180,
+      "next_review_date": "2026-07-09",
+      "proficiency": "Mastered",
+      "needs_extra_review": false,
+      "unfamiliar_count": 0,
+      "unfamiliar_history": [],
+      "finished": true
+    }
+  ],
+  "summary": {
+    "total_items": 20,
+    "finished": 9,
+    "total_no_records": 3
+  }
+}

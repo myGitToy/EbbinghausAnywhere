@@ -9,19 +9,71 @@
             <table class="table table-bordered table-hover mb-0">
                 <thead class="table-info">
                     <tr>
-                        <th style="width: 30%;">Item</th>
-                        <th style="width: 20%;">Category</th>
-                        <th style="width: 25%;">Review Cycle</th>
-                        <th style="width: 25%;">Mastery</th>
+                        <th style="width: 18%;">Item</th>
+                        <th style="width: 10%;">Category</th>
+                        <th style="width: 12%;">Review Cycle</th>
+                        <th style="width: 12%;">Scheduled Review Date</th>
+                        <th style="width: 12%;">Next Review Date</th>
+                        <th style="width: 9%;">Unfamiliar</th>
+                        <th style="width: 13%;">Review Type</th>
+                        <th style="width: 14%;">Status</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for review_item in page_obj %}
-                    <tr id="td{{ review_item.item.id }}" data-bs-toggle="modal" data-bs-target="#myModal{{ review_item.item.id }}">
+                    <tr id="td{{ review_item.item.id }}" data-bs-toggle="modal" data-bs-target="#myModal{{ review_item.item.id }}" 
+                        class="{% if review_item.is_extra %}table-warning{% endif %}">
                         <td>{{ review_item.item.item }}</td>
                         <td>{{ review_item.category_name }}</td>
-                        <td>Day {{ review_item.interval_day }}</td>
-                        <td class="proficiency-cell">{{ review_item.item.get_proficiency_display }}</td>
+                        <td>
+                            {% if review_item.is_extra and not review_item.is_regular %}
+                                <span class="text-warning">额外复习</span>
+                            {% else %}
+                                {% if review_item.interval_day == 0 %}第1次复习
+                                {% elif review_item.interval_day == 1 %}第2次复习
+                                {% elif review_item.interval_day == 2 %}第3次复习
+                                {% elif review_item.interval_day == 4 %}第4次复习
+                                {% elif review_item.interval_day == 7 %}第5次复习
+                                {% elif review_item.interval_day == 15 %}第6次复习
+                                {% elif review_item.interval_day == 30 %}第7次复习
+                                {% elif review_item.interval_day == 90 %}第8次复习
+                                {% elif review_item.interval_day == 180 %}第9次复习
+                                {% elif review_item.interval_day == 365 %}第10次复习
+                                {% else %}第?次复习{% endif %}
+                            {% endif %}
+                        </td>
+                        <td>
+                            <small>{{ review_item.next_review_date }}</small>
+                            {% if review_item.overdue_days > 0 %}
+                                <br><span class="badge bg-danger">逾期{{ review_item.overdue_days }}天</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if review_item.next_review_after_yes %}
+                                <small>{{ review_item.next_review_after_yes }}</small>
+                            {% else %}
+                                <small class="text-muted">-</small>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            {% if review_item.unfamiliar_count > 0 %}
+                                <span class="badge bg-danger">{{ review_item.unfamiliar_count }}/3</span>
+                            {% else %}
+                                <span class="badge bg-secondary">0/3</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if review_item.is_extra and review_item.is_regular %}
+                                <span class="badge bg-danger">常规+额外</span>
+                            {% elif review_item.is_extra %}
+                                <span class="badge bg-warning text-dark">额外复习</span>
+                            {% else %}
+                                <span class="badge bg-primary">常规复习</span>
+                            {% endif %}
+                        </td>
+                        <td class="proficiency-cell">
+                            <span class="badge bg-info">待复习</span>
+                        </td>
                     </tr>
   
                     <!-- Modal -->
@@ -35,7 +87,7 @@
                                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                 </div>
                                 <div class="modal-body">
-                                    <p><strong>Mastery:</strong> {{ review_item.item.get_proficiency_display }}</p>
+                                    <p><strong>状态:</strong> <span class="badge bg-info">待复习</span></p>
                                     <p><strong>Category:</strong> {{ review_item.item.category.name }}</p>
                                     <p><strong>Input Date:</strong> {{ review_item.item.inputDate }}</p>
                                     {% if review_item.item.category.name == "单词" %}

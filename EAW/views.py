@@ -302,7 +302,7 @@ class ItemUpdateView(generic.UpdateView):
         return super().form_valid(form)
     
     def get_success_url(self):
-        return reverse('item-detail', kwargs={'pk': self.object.pk})
+        return reverse('item-list')
 
 
 @method_decorator(login_required, name='dispatch')

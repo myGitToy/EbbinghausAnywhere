@@ -54,6 +54,15 @@
     # SECURITY WARNING: don't run with debug turned on in production!
     DEBUG = True
 ```
+
+## 3.1 服务器部署
+通过git clone将源码拉取到服务器指定目录
+下面三个文件传至相应的位置
+.env
+db.sqlite3
+\EbbinghausAnywhere\local_settings.py
+执行docker compose up -d
+
 ## 4 开源项目
 本项目基于 Apache License 2.0 授权发布。您可以在遵守许可协议条款的前提下自由使用、修改和分发本软件。许可协议的主要内容包括：
 - 您可以自由使用和分发本软件，包括商业用途。

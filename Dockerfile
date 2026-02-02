@@ -18,15 +18,28 @@ WORKDIR /app
 
 # 安装系统依赖（使用可配置镜像、重试、强制 IPv4、并清理缓存）
 RUN set -eux; \
-        cp -a /etc/apt/sources.list /etc/apt/sources.list.bak || true; \
-        if [ -f /etc/apt/sources.list ]; then \
+        # 尝试检测发行版代号（例如 trixie）；若检测失败则回退为 trixie
+        CODENAME=$(grep -E '^VERSION_CODENAME=' /etc/os-release | cut -d= -f2 || true); \
+        if [ -z "$CODENAME" ]; then CODENAME=trixie; fi; \
+        # 若缺少 /etc/apt/sources.list，则直接写入一个基于 APT_MIRROR 的最小 sources.list
+        if [ ! -f /etc/apt/sources.list ]; then \
+            cat > /etc/apt/sources.list <<EOF
+deb ${APT_MIRROR}/debian/ ${CODENAME} main contrib non-free
+deb ${APT_MIRROR}/debian/ ${CODENAME}-updates main contrib non-free
+deb ${APT_MIRROR}/debian-security ${CODENAME}-security main contrib non-free
+EOF
+        else \
+            # 若存在则尝试替换上游 host 为指定镜像（兼容存在的情形）
             sed -i.bak -E "s#https?://([a-z0-9.-]*\.)?deb.debian.org/#${APT_MIRROR}/#g; s#https?://security.debian.org/#${APT_MIRROR}/#g" /etc/apt/sources.list || true; \
         fi; \
+        # 替换 sources.list.d 下的条目（若存在）
         if [ -d /etc/apt/sources.list.d ]; then \
             for f in /etc/apt/sources.list.d/*.list; do [ -f "$f" ] || continue; sed -i.bak "s#https?://([a-z0-9.-]*\.)?deb.debian.org/#${APT_MIRROR}/#g; s#https?://security.debian.org/#${APT_MIRROR}/#g" "$f" || true; done; \
         fi; \
+        # apt 配置：重试与优先使用 IPv4
         printf 'Acquire::Retries "3";\nAcquire::ForceIPv4 "true";\n' > /etc/apt/apt.conf.d/99docker-apt-config; \
-        for i in 1 2 3; do apt-get update -o Acquire::Retries=3 -o Acquire::ForceIPv4=true && break || sleep 1; done; \
+        # 更新并安装
+        apt-get update -o Acquire::Retries=3 -o Acquire::ForceIPv4=true; \
         apt-get install -y --no-install-recommends -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" \
             gcc curl ca-certificates; \
         apt-get clean; \

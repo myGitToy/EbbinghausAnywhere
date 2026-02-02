@@ -22,7 +22,11 @@ services:
 
   # Django应用
   web:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APT_MIRROR: "http://mirrors.aliyun.com"
     container_name: ebbinghaus_web
     restart: always
     command: /app/entrypoint.sh

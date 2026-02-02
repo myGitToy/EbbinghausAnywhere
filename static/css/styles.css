@@ -369,3 +369,22 @@ a.btn.rounded-circle:hover {
         font-size: 0.9rem;
     }
 }
+
+/* 将侧边栏导航从右侧改为左侧 */
+#sidebar-wrapper {
+    right: auto !important;
+    left: 0 !important;
+    transform: translateX(-250px) !important;
+    border-left: none !important;
+    border-right: 1px solid rgba(255,255,255,.1) !important;
+}
+
+#sidebar-wrapper.active {
+    right: auto !important;
+    left: 250px !important;
+}
+
+.menu-toggle {
+    right: auto !important;
+    left: 15px !important;
+}

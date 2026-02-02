@@ -306,3 +306,26 @@ a.btn.rounded-circle:hover {
     }
 }
 </style>
+
+/* 将首页服务项放成一行，较窄屏幕允许横向滚动 */
+#services .row {
+    display: flex;
+    flex-wrap: nowrap; /* 不换行 */
+    justify-content: center;
+    gap: 1.25rem;
+    overflow-x: auto; /* 小屏幕时横向滚动 */
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 0.5rem;
+}
+
+#services .row .col-6.col-md-3 {
+    flex: 0 0 18%; /* 调整为 18% 以便五项在一行显示 */
+    max-width: 18%;
+}
+
+@media (max-width: 768px) {
+    #services .row .col-6.col-md-3 {
+        flex: 0 0 60%; /* 小屏时每个卡片更宽，便于触摸操作 */
+        max-width: 60%;
+    }
+}

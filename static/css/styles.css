@@ -388,3 +388,20 @@ a.btn.rounded-circle:hover {
     right: auto !important;
     left: 15px !important;
 }
+
+/* 手机端进一步减小卡片头部标题，避免占用过多空间 */
+@media (max-width: 480px) {
+    .card-header h3,
+    .card-header h4,
+    .card-header h5 {
+        font-size: 1.05rem !important;
+        line-height: 1.1 !important;
+        margin: 0 !important;
+    }
+    .card-header h3 { font-size: 1.1rem !important; }
+    .card-header h4 { font-size: 1.0rem !important; }
+    .card-header h5 { font-size: 0.95rem !important; }
+    .card-header {
+        padding: 0.6rem 0.75rem !important;
+    }
+}

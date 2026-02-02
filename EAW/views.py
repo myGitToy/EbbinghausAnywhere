@@ -1402,6 +1402,21 @@ def readme_view(request):
     return render(request, 'readme.html', {'content': html_content})
 
 
+def dev_log(request):
+    """
+    渲染仓库根下的 DEVELOPMENT_LOG.md 为 HTML 并显示（与 readme_view 风格一致）。
+    """
+    devlog_path = os.path.join(settings.BASE_DIR, 'DEVELOPMENT_LOG.md')
+    if os.path.exists(devlog_path):
+        with open(devlog_path, 'r', encoding='utf-8') as f:
+            md = f.read()
+        html_content = markdown.markdown(md, extensions=['fenced_code', 'tables'])
+    else:
+        html_content = '<p>No development log found.</p>'
+
+    return render(request, 'dev_log.html', {'content': html_content})
+
+
 # ==================== DeepSeek API 相关视图 ====================
 
 @login_required

@@ -23,11 +23,9 @@ RUN set -eux; \
         if [ -z "$CODENAME" ]; then CODENAME=trixie; fi; \
         # 若缺少 /etc/apt/sources.list，则直接写入一个基于 APT_MIRROR 的最小 sources.list
         if [ ! -f /etc/apt/sources.list ]; then \
-            cat > /etc/apt/sources.list <<EOF
-deb ${APT_MIRROR}/debian/ ${CODENAME} main contrib non-free
-deb ${APT_MIRROR}/debian/ ${CODENAME}-updates main contrib non-free
-deb ${APT_MIRROR}/debian-security ${CODENAME}-security main contrib non-free
-EOF
+            printf "deb %s/debian/ %s main contrib non-free\n" "${APT_MIRROR}" "${CODENAME}" > /etc/apt/sources.list; \
+            printf "deb %s/debian/ %s-updates main contrib non-free\n" "${APT_MIRROR}" "${CODENAME}" >> /etc/apt/sources.list; \
+            printf "deb %s/debian-security %s-security main contrib non-free\n" "${APT_MIRROR}" "${CODENAME}" >> /etc/apt/sources.list; \
         else \
             # 若存在则尝试替换上游 host 为指定镜像（兼容存在的情形）
             sed -i.bak -E "s#https?://([a-z0-9.-]*\.)?deb.debian.org/#${APT_MIRROR}/#g; s#https?://security.debian.org/#${APT_MIRROR}/#g" /etc/apt/sources.list || true; \

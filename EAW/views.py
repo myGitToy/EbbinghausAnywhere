@@ -449,10 +449,17 @@ def ReviewHomeView(request):
 
 # Calendar views and APIs (FullCalendar integration)
 @login_required
-@login_required
 def calendar_month_view(request):
     """渲染日历页面（前端使用 FullCalendar 拉取事件）。"""
     return render(request, 'calendar_month.html', {
+        'today': datetime.today().date()
+    })
+
+
+@login_required
+def calendar_vue_view(request):
+    """Vue 日历页面"""
+    return render(request, 'calendar_vue.html', {
         'today': datetime.today().date()
     })
 

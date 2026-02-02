@@ -48,6 +48,7 @@ urlpatterns = [
     path('readme/', views.readme_view, name='readme'),
     # Calendar page and APIs
     path('calendar/', views.calendar_month_view, name='calendar-month'),
+    path('calendar2/', views.calendar_vue_view, name='calendar-vue'),
     path('api/calendar-events/', views.calendar_events_api, name='calendar-events-api'),
     path('api/calendar-day-items/', views.calendar_day_items_api, name='calendar-day-items-api'),
     

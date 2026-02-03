@@ -21,6 +21,7 @@
 ### 2.4 导入和导出数据
 在Manage Profile页面可以更改账号信息，导入和导出数据
 ## 3. 部署方法
+### 3.1 本地部署
 - 需要在根目录下创建本地.env文件放置密钥，如果需要开启在线查询单词释义功能，需要在其中放入百度api应用ID和密钥，参考[文本翻译-词典版](https://cloud.baidu.com/doc/MT/s/nkqrzmbpc)
 ```
     # SECURITY WARNING: keep the secret key used in production secret!
@@ -62,6 +63,23 @@
 db.sqlite3
 \EbbinghausAnywhere\local_settings.py
 执行docker compose up -d
+## 3.2 服务器部署（源码方式）
+### 3.2.1 拉取项目源码
+```
+git clone https://github.com/myGitToy/EbbinghausAnywhere.git
+```
+### 3.2.2 进入项目文件夹
+```
+cd /home/YOUR USER NAME/repos/EbbinghausAnywhere
+```
+
+### 3.2.3 构建项目
+目前docker文件已为小内存服务器做了适配，并且强制使用IP地址和阿里云镜像，确保可以部署成功
+```
+docker compose build --no-cache --progress=plain
+docker compose up -d
+```
+显示healthy后就可以通过 IP:8000的方式访问了
 
 ## 4 开源项目
 本项目基于 Apache License 2.0 授权发布。您可以在遵守许可协议条款的前提下自由使用、修改和分发本软件。许可协议的主要内容包括：

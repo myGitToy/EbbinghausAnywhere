@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  web:
+    image: ghuiqiao711/ewa:latest
+    container_name: ewa_web
+    restart: always
+    env_file:
+      - ./deploy/.env
+    volumes:
+      # 本地配置文件（不要把这些文件打包到镜像）
+      - ./deploy/local_settings.py:/app/EbbinghausAnywhere/local_settings.py:ro
+      - ./deploy/.env:/app/.env:ro
+      # 持久化 SQLite 数据
+      - ./data/db.sqlite3:/app/db.sqlite3
+      # 媒体与静态文件
+      - ./staticfiles:/app/staticfiles
+      - ./media:/app/media
+    ports:
+      - "8000:8000"
+    command: /app/entrypoint.sh
+
+# 说明：本 compose 文件用于生产/单机部署，假设镜像已经构建并推送为 ghuiqiao711/ewa:latest。
+# 推荐目录结构（相对于仓库根目录）：
+# ./deploy/.env                 -> 实际的环境变量文件（勿提交到仓库）
+# ./deploy/local_settings.py    -> 覆盖项目内的 local_settings.py（只读挂载）
+# ./data/db.sqlite3             -> SQLite 数据库文件（宿主机持久化）
+# ./staticfiles/                -> collectstatic 输出目录（宿主机持久化）
+# ./media/                      -> 上传的媒体文件（宿主机持久化）
+
+# 如果你打算使用 PostgreSQL，请参考原有 docker-compose.yml 并替换数据库相关配置。

@@ -56,6 +56,13 @@
     DEBUG = True
 ```
 
+## 3.1 服务器部署
+通过git clone将源码拉取到服务器指定目录
+下面三个文件传至相应的位置
+.env
+db.sqlite3
+\EbbinghausAnywhere\local_settings.py
+执行docker compose up -d
 ## 3.2 服务器部署（源码方式）
 ### 3.2.1 拉取项目源码
 ```

@@ -306,3 +306,102 @@ a.btn.rounded-circle:hover {
     }
 }
 </style>
+
+/* 将首页服务项放成一行，较窄屏幕允许横向滚动 */
+#services .row {
+    display: flex;
+    flex-wrap: nowrap; /* 不换行 */
+    justify-content: center;
+    gap: 1.25rem;
+    overflow-x: auto; /* 小屏幕时横向滚动 */
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 0.5rem;
+}
+
+#services .row .col-6.col-md-3 {
+    flex: 0 0 18%; /* 调整为 18% 以便五项在一行显示 */
+    max-width: 18%;
+}
+
+@media (max-width: 768px) {
+    #services .row .col-6.col-md-3 {
+        flex: 0 0 60%; /* 小屏时每个卡片更宽，便于触摸操作 */
+        max-width: 60%;
+    }
+}
+
+/* 移动设备上复习页面表格的响应式处理 */
+@media (max-width: 768px) {
+    /* 为表格容器添加横向滚动 */
+    .card-body > .table-responsive,
+    .card-body > table {
+        display: block;
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    /* 调整复习页面的表格字体大小 */
+    #review-home table,
+    #reviewContent table {
+        font-size: 0.75rem;
+        min-width: 800px; /* 确保表格有最小宽度可以滚动 */
+    }
+    
+    /* 调整表头和单元格的内边距 */
+    #review-home table th,
+    #review-home table td,
+    #reviewContent table th,
+    #reviewContent table td {
+        padding: 0.4rem;
+        white-space: nowrap;
+    }
+    
+    /* 调整徽章大小 */
+    #review-home .badge,
+    #reviewContent .badge {
+        font-size: 0.65rem;
+        padding: 0.2em 0.4em;
+    }
+    
+    /* 调整模态框内容 */
+    .modal-body {
+        font-size: 0.9rem;
+    }
+}
+
+/* 将侧边栏导航从右侧改为左侧 */
+#sidebar-wrapper {
+    right: auto !important;
+    left: 0 !important;
+    transform: translateX(-250px) !important;
+    border-left: none !important;
+    border-right: 1px solid rgba(255,255,255,.1) !important;
+}
+
+#sidebar-wrapper.active {
+    right: auto !important;
+    left: 250px !important;
+}
+
+.menu-toggle {
+    right: auto !important;
+    left: 15px !important;
+}
+
+/* 手机端进一步减小卡片头部标题，避免占用过多空间 */
+@media (max-width: 480px) {
+    .card-header h3,
+    .card-header h4,
+    .card-header h5 {
+        font-size: 1.05rem !important;
+        line-height: 1.1 !important;
+        margin: 0 !important;
+    }
+    .card-header h3 { font-size: 1.1rem !important; }
+    .card-header h4 { font-size: 1.0rem !important; }
+    .card-header h5 { font-size: 0.95rem !important; }
+    .card-header {
+        padding: 0.6rem 0.75rem !important;
+    }
+}

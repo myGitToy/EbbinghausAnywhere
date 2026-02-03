@@ -148,7 +148,7 @@ class DeepSeekConfig(models.Model):
     )
     temperature = models.FloatField(
         default=1.0,
-        help_text="生成温度 (0.0-2.0)，数据抽取建议1.0，翻译建议1.3，创意写作建议1.5"
+        help_text="生成温度 (0.0-2.0)，数据抽取、英语词典建议1.0，翻译建议1.3，创意写作建议1.5"
     )
     system_prompt = models.TextField(
         default='你是英语词典助手。输入：英文单词。输出：JSON格式包含uk_phonetic(英音标)、us_phonetic(美音标)、meaning(中文释义)、example_sentences(2-3个例句数组，每个包含english和chinese字段)。目标用户：小学5年级。严格按照JSON格式输出，不要添加任何其他文字或markdown代码块标记。',

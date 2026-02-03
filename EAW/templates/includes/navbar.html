@@ -16,6 +16,10 @@
                 <li class="nav-item sidebar-nav-item">
                     <a class="nav-link js-scroll-trigger" href="{% url 'review-home' %}">Review</a>
                 </li>
+                {% comment %}
+                注：以下导航项在测试版中临时隐藏，保留路由与页面功能不变。
+                要恢复：删除本注释块。
+
                 <li class="nav-item sidebar-nav-item">
                     <a class="nav-link js-scroll-trigger" href="{% url 'input-view' %}">Input</a>
                 </li>
@@ -28,6 +32,7 @@
                 <li class="nav-item sidebar-nav-item">
                     <a class="nav-link js-scroll-trigger" href="{% url 'admin:index' %}">Manage Data</a>
                 </li>
+                {% endcomment %}
                 <li class="nav-item sidebar-nav-item">
                     <a href="#" class="nav-link js-scroll-trigger" id="logout-link">Log out</a>
                 </li>
@@ -68,6 +73,9 @@
                 </li>
                 <li class="nav-item sidebar-nav-item">
                     <a class="nav-link js-scroll-trigger" href="{% url 'readme' %}">Read Me</a>
+                </li>
+                <li class="nav-item sidebar-nav-item">
+                    <a class="nav-link js-scroll-trigger" href="{% url 'dev_log' %}">Dev Log</a>
                 </li>
                 <li class="nav-item sidebar-nav-item">
                     <a class="nav-link js-scroll-trigger" href="mailto:ebbinghausanywhere@gmail.com">Contact</a>

@@ -46,6 +46,7 @@ urlpatterns = [
     path('import_user_data/', views.import_items_from_excel, name='import_user_data'),
     path('about/', views.about, name='about'),  # 关于页面
     path('readme/', views.readme_view, name='readme'),
+    path('dev-log/', views.dev_log, name='dev_log'),
     # Calendar page and APIs
     path('calendar/', views.calendar_month_view, name='calendar-month'),
     path('api/calendar-events/', views.calendar_events_api, name='calendar-events-api'),

@@ -29,19 +29,27 @@
                                 <div class="mb-3">
                                     <h6><i class="fa fa-volume-up"></i> 发音</h6>
                                     <div>
-                                        {% if object.uk_phonetic %}
-                                            <span class="badge bg-info me-2">英 [{{ object.uk_phonetic }}]</span>
-                                        {% endif %}
+                                        <!-- 美式发音 - 第一行 -->
                                         {% if object.us_phonetic %}
-                                            <span class="badge bg-info me-2">美 [{{ object.us_phonetic }}]</span>
+                                            <div class="d-flex align-items-center mb-2">
+                                                <span class="badge bg-info me-2" style="min-width: 150px;">美 [{{ object.us_phonetic }}]</span>
+                                                {% if object.src_tts %}
+                                                    <button class="btn btn-sm btn-outline-primary" onclick="playAudio('{{ object.item }}', 'us')" type="button">
+                                                        <i class="fa fa-play"></i> 播放发音
+                                                    </button>
+                                                {% endif %}
+                                            </div>
                                         {% endif %}
-                                        {% if object.src_tts %}
-                                            <button class="btn btn-sm btn-outline-primary" onclick="document.getElementById('audioPlayer').play()" type="button">
-                                                <i class="fa fa-play"></i> 播放发音
-                                            </button>
-                                            <audio id="audioPlayer" class="d-none">
-                                                <source src="{{ object.src_tts }}" type="audio/mpeg">
-                                            </audio>
+                                        <!-- 英式发音 - 第二行 -->
+                                        {% if object.uk_phonetic %}
+                                            <div class="d-flex align-items-center">
+                                                <span class="badge bg-info me-2" style="min-width: 150px;">英 [{{ object.uk_phonetic }}]</span>
+                                                {% if object.src_tts %}
+                                                    <button class="btn btn-sm btn-outline-primary" onclick="playAudio('{{ object.item }}', 'uk')" type="button">
+                                                        <i class="fa fa-play"></i> 播放发音
+                                                    </button>
+                                                {% endif %}
+                                            </div>
                                         {% endif %}
                                     </div>
                                 </div>
@@ -250,5 +258,17 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+// 播放音频函数（支持美式和英式）
+function playAudio(word, accent) {
+    var tl = accent === 'us' ? 'en-US' : 'en-GB';
+    var audioUrl = 'https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=' + tl + '&q=' + encodeURIComponent(word);
+    
+    var audio = new Audio(audioUrl);
+    audio.play().catch(function(error) {
+        console.error('播放失败:', error);
+        alert('音频播放失败，可能是网络问题或浏览器限制');
+    });
+}
 </script>
 {% endblock %}

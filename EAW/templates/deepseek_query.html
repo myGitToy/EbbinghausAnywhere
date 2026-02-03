@@ -83,12 +83,22 @@
                                 <div class="mb-3">
                                     <h6><i class="fa fa-volume-up"></i> 发音</h6>
                                     <div id="phonetic-container">
-                                        <span class="badge bg-info me-2" id="uk-phonetic">-</span>
-                                        <span class="badge bg-info me-2" id="us-phonetic">-</span>
-                                        <button class="btn btn-sm btn-outline-primary" id="play-audio-btn" type="button">
-                                            <i class="fa fa-play"></i> 播放发音
-                                        </button>
-                                        <audio id="word-audio" class="d-none"></audio>
+                                        <!-- 美式发音 - 第一行 -->
+                                        <div class="d-flex align-items-center mb-2">
+                                            <span class="badge bg-info me-2" id="us-phonetic" style="min-width: 150px;">-</span>
+                                            <button class="btn btn-sm btn-outline-primary" id="play-us-audio-btn" type="button">
+                                                <i class="fa fa-play"></i> 播放发音
+                                            </button>
+                                        </div>
+                                        <!-- 英式发音 - 第二行 -->
+                                        <div class="d-flex align-items-center">
+                                            <span class="badge bg-info me-2" id="uk-phonetic" style="min-width: 150px;">-</span>
+                                            <button class="btn btn-sm btn-outline-primary" id="play-uk-audio-btn" type="button">
+                                                <i class="fa fa-play"></i> 播放发音
+                                            </button>
+                                        </div>
+                                        <audio id="word-audio-us" class="d-none"></audio>
+                                        <audio id="word-audio-uk" class="d-none"></audio>
                                     </div>
                                 </div>
 
@@ -248,12 +258,18 @@ function displayResult(word, data) {
     // 显示音标
     const ukPhonetic = data.uk_phonetic || '-';
     const usPhonetic = data.us_phonetic || '-';
-    document.getElementById('uk-phonetic').textContent = '英 [' + ukPhonetic + ']';
     document.getElementById('us-phonetic').textContent = '美 [' + usPhonetic + ']';
+    document.getElementById('uk-phonetic').textContent = '英 [' + ukPhonetic + ']';
     
-    // 设置音频
-    const audio = document.getElementById('word-audio');
-    audio.src = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=en&q=${word}`;
+    // 设置音频 - 美式和英式
+    const audioUS = document.getElementById('word-audio-us');
+    const audioUK = document.getElementById('word-audio-uk');
+    if (audioUS && audioUK) {
+        audioUS.src = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=en-US&q=${word}`;
+        audioUK.src = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=en-GB&q=${word}`;
+    } else {
+        console.error('Audio elements not found');
+    }
     
     // 显示释义
     document.getElementById('meaning-text').textContent = data.meaning || '-';
@@ -318,14 +334,33 @@ document.addEventListener('click', function(e) {
     }
 });
 
-// 播放音频
-document.getElementById('play-audio-btn').addEventListener('click', function() {
-    const audio = document.getElementById('word-audio');
-    audio.play().catch(error => {
-        console.error('播放失败:', error);
-        alert('音频播放失败，可能是网络问题或浏览器限制');
+// 播放音频 - 美式
+const playUsBtn = document.getElementById('play-us-audio-btn');
+if (playUsBtn) {
+    playUsBtn.addEventListener('click', function() {
+        const audio = document.getElementById('word-audio-us');
+        if (audio) {
+            audio.play().catch(error => {
+                console.error('播放失败:', error);
+                alert('音频播放失败，可能是网络问题或浏览器限制');
+            });
+        }
     });
-});
+}
+
+// 播放音频 - 英式
+const playUkBtn = document.getElementById('play-uk-audio-btn');
+if (playUkBtn) {
+    playUkBtn.addEventListener('click', function() {
+        const audio = document.getElementById('word-audio-uk');
+        if (audio) {
+            audio.play().catch(error => {
+                console.error('播放失败:', error);
+                alert('音频播放失败，可能是网络问题或浏览器限制');
+            });
+        }
+    });
+}
 
 // 保存到单词本
 document.getElementById('save-btn').addEventListener('click', function() {

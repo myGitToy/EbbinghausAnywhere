@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TTS 测试页面 - Web Speech API</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+        }
+        .input-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        select {
+            width: 100%;
+            padding: 10px;
+            font-size: 14px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+            transition: background-color 0.3s;
+        }
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+        .btn-success {
+            background-color: #28a745;
+            color: white;
+        }
+        .btn-success:hover {
+            background-color: #218838;
+        }
+        .btn-info {
+            background-color: #17a2b8;
+            color: white;
+        }
+        .btn-info:hover {
+            background-color: #138496;
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background-color: #5a6268;
+        }
+        .word-examples {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .word-btn {
+            padding: 8px 16px;
+            background-color: #e9ecef;
+            border: 1px solid #ced4da;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .word-btn:hover {
+            background-color: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+        .info-box {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        .voice-info {
+            font-size: 12px;
+            color: #666;
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #fff;
+            border-radius: 5px;
+        }
+        .settings {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .slider-container input[type="range"] {
+            flex: 1;
+        }
+        .slider-value {
+            min-width: 40px;
+            text-align: right;
+            font-weight: bold;
+            color: #007bff;
+        }
+        @media (max-width: 600px) {
+            .settings {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔊 TTS 测试页面</h1>
+        <p class="subtitle">测试浏览器内置 Web Speech API 的发音效果</p>
+        
+        <div class="test-section">
+            <h3>📝 单词发音测试</h3>
+            
+            <div class="input-group">
+                <label for="wordInput">输入要朗读的单词：</label>
+                <input type="text" id="wordInput" placeholder="例如: hello, pronunciation, dictionary" value="hello">
+            </div>
+            
+            <div class="input-group">
+                <label for="voiceSelect">选择语音：</label>
+                <select id="voiceSelect"></select>
+                <div class="voice-info" id="voiceInfo">正在加载可用语音...</div>
+            </div>
+            
+            <div class="settings">
+                <div class="input-group">
+                    <label for="rateSlider">语速 (Rate):</label>
+                    <div class="slider-container">
+                        <input type="range" id="rateSlider" min="0.1" max="2" step="0.1" value="0.9">
+                        <span class="slider-value" id="rateValue">0.9</span>
+                    </div>
+                </div>
+                
+                <div class="input-group">
+                    <label for="pitchSlider">音调 (Pitch):</label>
+                    <div class="slider-container">
+                        <input type="range" id="pitchSlider" min="0" max="2" step="0.1" value="1">
+                        <span class="slider-value" id="pitchValue">1.0</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <button class="btn-primary" onclick="speakWord()">🔊 朗读</button>
+                <button class="btn-secondary" onclick="stopSpeaking()">⏹️ 停止</button>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <label>快速测试常用单词：</label>
+                <div class="word-examples">
+                    <button class="word-btn" onclick="testWord('hello')">hello</button>
+                    <button class="word-btn" onclick="testWord('world')">world</button>
+                    <button class="word-btn" onclick="testWord('pronunciation')">pronunciation</button>
+                    <button class="word-btn" onclick="testWord('dictionary')">dictionary</button>
+                    <button class="word-btn" onclick="testWord('beautiful')">beautiful</button>
+                    <button class="word-btn" onclick="testWord('extraordinary')">extraordinary</button>
+                    <button class="word-btn" onclick="testWord('communication')">communication</button>
+                    <button class="word-btn" onclick="testWord('technology')">technology</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>🎯 快速切换口音</h3>
+            <button class="btn-success" onclick="switchToUSEnglish()">🇺🇸 美式英语</button>
+            <button class="btn-info" onclick="switchToUKEnglish()">🇬🇧 英式英语</button>
+            <button class="btn-info" onclick="switchToAUEnglish()">🇦🇺 澳式英语</button>
+        </div>
+        
+        <div class="info-box">
+            <strong>📌 说明：</strong>
+            <ul style="margin: 10px 0;">
+                <li>✅ 完全免费，无需任何外部服务</li>
+                <li>✅ 离线可用，不受网络限制</li>
+                <li>✅ 所有现代浏览器都支持</li>
+                <li>⚠️ 不同浏览器和操作系统的语音库可能不同</li>
+                <li>⚠️ 首次加载可能需要等待语音库初始化</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        let voices = [];
+        let selectedVoice = null;
+
+        // 初始化语音列表
+        function loadVoices() {
+            voices = speechSynthesis.getVoices();
+            const voiceSelect = document.getElementById('voiceSelect');
+            voiceSelect.innerHTML = '';
+            
+            // 优先显示英语语音
+            const englishVoices = voices.filter(voice => voice.lang.startsWith('en'));
+            const otherVoices = voices.filter(voice => !voice.lang.startsWith('en'));
+            
+            // 添加英语语音选项
+            if (englishVoices.length > 0) {
+                const enGroup = document.createElement('optgroup');
+                enGroup.label = '英语语音';
+                englishVoices.forEach((voice, index) => {
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.textContent = `${voice.name} (${voice.lang})${voice.default ? ' [默认]' : ''}`;
+                    enGroup.appendChild(option);
+                });
+                voiceSelect.appendChild(enGroup);
+                
+                // 默认选择第一个英语语音
+                if (!selectedVoice) {
+                    const defaultEnVoice = englishVoices.find(v => v.lang === 'en-US') || englishVoices[0];
+                    selectedVoice = defaultEnVoice;
+                    voiceSelect.value = voices.indexOf(defaultEnVoice);
+                }
+            }
+            
+            // 添加其他语音选项
+            if (otherVoices.length > 0) {
+                const otherGroup = document.createElement('optgroup');
+                otherGroup.label = '其他语音';
+                otherVoices.forEach((voice, index) => {
+                    const option = document.createElement('option');
+                    option.value = voices.indexOf(voice);
+                    option.textContent = `${voice.name} (${voice.lang})`;
+                    otherGroup.appendChild(option);
+                });
+                voiceSelect.appendChild(otherGroup);
+            }
+            
+            updateVoiceInfo();
+        }
+
+        // 更新语音信息显示
+        function updateVoiceInfo() {
+            const voiceInfo = document.getElementById('voiceInfo');
+            const totalVoices = voices.length;
+            const englishVoices = voices.filter(v => v.lang.startsWith('en')).length;
+            voiceInfo.textContent = `系统共有 ${totalVoices} 个语音，其中英语语音 ${englishVoices} 个`;
+        }
+
+        // 语音选择改变
+        document.getElementById('voiceSelect').addEventListener('change', function() {
+            selectedVoice = voices[this.value];
+        });
+
+        // 语速滑块
+        document.getElementById('rateSlider').addEventListener('input', function() {
+            document.getElementById('rateValue').textContent = this.value;
+        });
+
+        // 音调滑块
+        document.getElementById('pitchSlider').addEventListener('input', function() {
+            document.getElementById('pitchValue').textContent = this.value;
+        });
+
+        // 朗读单词
+        function speakWord() {
+            const word = document.getElementById('wordInput').value.trim();
+            if (!word) {
+                alert('请输入要朗读的单词！');
+                return;
+            }
+            
+            // 停止当前播放
+            speechSynthesis.cancel();
+            
+            const utterance = new SpeechSynthesisUtterance(word);
+            
+            // 设置语音
+            if (selectedVoice) {
+                utterance.voice = selectedVoice;
+            }
+            
+            // 设置语速和音调
+            utterance.rate = parseFloat(document.getElementById('rateSlider').value);
+            utterance.pitch = parseFloat(document.getElementById('pitchSlider').value);
+            
+            // 设置语言（如果没有选择语音，默认使用美式英语）
+            if (!selectedVoice) {
+                utterance.lang = 'en-US';
+            }
+            
+            // 播放
+            speechSynthesis.speak(utterance);
+        }
+
+        // 停止朗读
+        function stopSpeaking() {
+            speechSynthesis.cancel();
+        }
+
+        // 测试指定单词
+        function testWord(word) {
+            document.getElementById('wordInput').value = word;
+            speakWord();
+        }
+
+        // 切换到美式英语
+        function switchToUSEnglish() {
+            const usVoice = voices.find(v => v.lang === 'en-US') || voices.find(v => v.lang.startsWith('en-US'));
+            if (usVoice) {
+                selectedVoice = usVoice;
+                document.getElementById('voiceSelect').value = voices.indexOf(usVoice);
+                alert('已切换到美式英语');
+            } else {
+                alert('未找到美式英语语音');
+            }
+        }
+
+        // 切换到英式英语
+        function switchToUKEnglish() {
+            const ukVoice = voices.find(v => v.lang === 'en-GB') || voices.find(v => v.lang.startsWith('en-GB'));
+            if (ukVoice) {
+                selectedVoice = ukVoice;
+                document.getElementById('voiceSelect').value = voices.indexOf(ukVoice);
+                alert('已切换到英式英语');
+            } else {
+                alert('未找到英式英语语音');
+            }
+        }
+
+        // 切换到澳式英语
+        function switchToAUEnglish() {
+            const auVoice = voices.find(v => v.lang === 'en-AU') || voices.find(v => v.lang.startsWith('en-AU'));
+            if (auVoice) {
+                selectedVoice = auVoice;
+                document.getElementById('voiceSelect').value = voices.indexOf(auVoice);
+                alert('已切换到澳式英语');
+            } else {
+                alert('未找到澳式英语语音');
+            }
+        }
+
+        // 回车键触发朗读
+        document.getElementById('wordInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                speakWord();
+            }
+        });
+
+        // 初始化
+        if ('speechSynthesis' in window) {
+            // 语音列表可能需要异步加载
+            speechSynthesis.onvoiceschanged = loadVoices;
+            loadVoices();
+        } else {
+            alert('您的浏览器不支持 Web Speech API！请使用 Chrome、Edge、Safari 或 Firefox 等现代浏览器。');
+        }
+    </script>
+</body>
+</html>

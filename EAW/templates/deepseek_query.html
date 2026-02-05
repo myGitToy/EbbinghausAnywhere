@@ -23,21 +23,37 @@
                     <!-- 查询表单 -->
                     <div class="mb-4">
                         <div class="input-group input-group-lg">
-                            <input type="text" 
-                                   class="form-control" 
-                                   id="word-input" 
-                                   placeholder="输入英文单词..." 
+                            <input type="text"
+                                   class="form-control"
+                                   id="word-input"
+                                   placeholder="输入英文单词..."
                                    aria-label="单词输入">
-                            <button class="btn btn-primary" 
-                                    type="button" 
+                            <button class="btn btn-primary"
+                                    type="button"
                                     id="query-btn"
                                     disabled>
                                 <i class="fa fa-search"></i> 查询
                             </button>
                         </div>
                         <div class="form-text">
-                            <i class="fa fa-info-circle"></i> 
+                            <i class="fa fa-info-circle"></i>
                             提示：输入单词后点击查询按钮，使用 DeepSeek AI 获取释义
+                        </div>
+                    </div>
+
+                    <!-- TTS 偏好设置 -->
+                    <div class="mb-3 p-2 bg-light rounded">
+                        <div class="d-flex align-items-center">
+                            <label for="tts-method-select" class="me-2 mb-0">
+                                <i class="fa fa-cog text-primary"></i> 发音方式：
+                            </label>
+                            <select id="tts-method-select" class="form-select form-select-sm" style="width: auto;">
+                                <option value="google">🔊 Google TTS（在线）</option>
+                                <option value="browser">🎧 浏览器 TTS（离线）</option>
+                            </select>
+                            <small class="text-muted ms-2">
+                                <i class="fa fa-info-circle"></i> 选择后将自动更新下方图标
+                            </small>
                         </div>
                     </div>
 
@@ -83,12 +99,22 @@
                                 <div class="mb-3">
                                     <h6><i class="fa fa-volume-up"></i> 发音</h6>
                                     <div id="phonetic-container">
-                                        <span class="badge bg-info me-2" id="uk-phonetic">-</span>
-                                        <span class="badge bg-info me-2" id="us-phonetic">-</span>
-                                        <button class="btn btn-sm btn-outline-primary" id="play-audio-btn" type="button">
-                                            <i class="fa fa-play"></i> 播放发音
-                                        </button>
-                                        <audio id="word-audio" class="d-none"></audio>
+                                        <!-- 美式发音 -->
+                                        <div class="d-flex align-items-center mb-2">
+                                            <span class="badge bg-info me-2" id="us-phonetic" style="min-width: 150px;">-</span>
+                                            <button class="btn btn-sm btn-link p-0 me-1 tts-play-btn" id="play-us-btn" type="button" title="播放美式发音">
+                                                <i class="fa fa-volume-up text-primary"></i>
+                                            </button>
+                                            <small class="tts-method-icon text-muted" id="us-method-icon"></small>
+                                        </div>
+                                        <!-- 英式发音 -->
+                                        <div class="d-flex align-items-center">
+                                            <span class="badge bg-info me-2" id="uk-phonetic" style="min-width: 150px;">-</span>
+                                            <button class="btn btn-sm btn-link p-0 me-1 tts-play-btn" id="play-uk-btn" type="button" title="播放英式发音">
+                                                <i class="fa fa-volume-up text-primary"></i>
+                                            </button>
+                                            <small class="tts-method-icon text-muted" id="uk-method-icon"></small>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -146,8 +172,132 @@
 let currentWord = '';
 let currentData = null;
 
+// TTS 偏好管理函数
+function getTTSPreference() {
+    return localStorage.getItem('tts_preference') || 'google';
+}
+
+// Google TTS 播放函数
+function playAudioWithGoogle(word, accent) {
+    var tl = accent === 'us' ? 'en-US' : 'en-GB';
+    var audioUrl = 'https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=' + tl + '&q=' + encodeURIComponent(word);
+    var audio = new Audio(audioUrl);
+    audio.play().catch(function(error) {
+        console.error('Google TTS播放失败:', error);
+        alert('Google TTS 播放失败，请尝试切换到浏览器 TTS 模式');
+    });
+}
+
+// 浏览器 Web Speech API 播放函数
+function playAudioWithBrowser(word, accent) {
+    if (!('speechSynthesis' in window)) {
+        alert('您的浏览器不支持语音合成功能');
+        return;
+    }
+
+    // 停止当前播放
+    window.speechSynthesis.cancel();
+
+    var utterance = new SpeechSynthesisUtterance(word);
+    var lang = accent === 'us' ? 'en-US' : 'en-GB';
+    utterance.lang = lang;
+
+    // 设置语速和音调
+    utterance.rate = 0.9;
+    utterance.pitch = 1.0;
+
+    // 尝试选择匹配的语音
+    var voices = window.speechSynthesis.getVoices();
+    var matchingVoice = voices.find(function(voice) {
+        return voice.lang === lang;
+    });
+    if (matchingVoice) {
+        utterance.voice = matchingVoice;
+    }
+
+    window.speechSynthesis.speak(utterance);
+}
+
+// 根据口音播放（使用缓存的 TTS 偏好）
+function playAudioWithAccent(word, accent) {
+    const method = getTTSPreference();
+
+    if (method === 'browser') {
+        playAudioWithBrowser(word, accent);
+    } else {
+        playAudioWithGoogle(word, accent);
+    }
+}
+
+// 更新 TTS 方法图标
+function updateTTSMethodIcons() {
+    const method = getTTSPreference();
+    const usIcon = document.getElementById('us-method-icon');
+    const ukIcon = document.getElementById('uk-method-icon');
+
+    if (method === 'browser') {
+        if (usIcon) {
+            usIcon.innerHTML = '<i class="fa fa-headphones text-secondary"></i>';
+            usIcon.title = '浏览器 TTS';
+        }
+        if (ukIcon) {
+            ukIcon.innerHTML = '<i class="fa fa-headphones text-secondary"></i>';
+            ukIcon.title = '浏览器 TTS';
+        }
+    } else {
+        if (usIcon) {
+            usIcon.innerHTML = '<i class="fa fa-google text-secondary"></i>';
+            usIcon.title = 'Google TTS';
+        }
+        if (ukIcon) {
+            ukIcon.innerHTML = '<i class="fa fa-google text-secondary"></i>';
+            ukIcon.title = 'Google TTS';
+        }
+    }
+}
+
 // 页面加载时检查 API 配置
 document.addEventListener('DOMContentLoaded', function() {
+    // 初始化 TTS 偏好选择器
+    const ttsSelect = document.getElementById('tts-method-select');
+    if (ttsSelect) {
+        // 设置当前值
+        ttsSelect.value = getTTSPreference();
+
+        // 监听变化
+        ttsSelect.addEventListener('change', function() {
+            const newMethod = this.value;
+            localStorage.setItem('tts_preference', newMethod);
+            console.log('TTS 偏好已设置为:', newMethod);
+
+            // 更新 TTS 图标
+            updateTTSMethodIcons();
+        });
+    }
+
+    // 初始化语音库
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.getVoices();
+        window.speechSynthesis.onvoiceschanged = function() {
+            console.log('语音列表已加载');
+        };
+    }
+
+    // 初始化 TTS 图标
+    updateTTSMethodIcons();
+
+    // 监听 localStorage 变化
+    window.addEventListener('storage', function(e) {
+        if (e.key === 'tts_preference') {
+            // 更新选择器
+            if (ttsSelect) {
+                ttsSelect.value = getTTSPreference();
+            }
+            // 更新图标
+            updateTTSMethodIcons();
+        }
+    });
+
     const statusCheck = document.getElementById('api-status-check');
     statusCheck.classList.remove('d-none');
     
@@ -248,15 +398,24 @@ function displayResult(word, data) {
     // 显示音标
     const ukPhonetic = data.uk_phonetic || '-';
     const usPhonetic = data.us_phonetic || '-';
-    document.getElementById('uk-phonetic').textContent = '英 [' + ukPhonetic + ']';
     document.getElementById('us-phonetic').textContent = '美 [' + usPhonetic + ']';
+    document.getElementById('uk-phonetic').textContent = '英 [' + ukPhonetic + ']';
     
-    // 设置音频
-    const audio = document.getElementById('word-audio');
-    audio.src = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=en&q=${word}`;
+    // 设置音频 - 美式和英式
+    const audioUS = document.getElementById('word-audio-us');
+    const audioUK = document.getElementById('word-audio-uk');
+    if (audioUS && audioUK) {
+        audioUS.src = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=en-US&q=${word}`;
+        audioUK.src = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=en-GB&q=${word}`;
+    } else {
+        console.error('Audio elements not found');
+    }
     
     // 显示释义
     document.getElementById('meaning-text').textContent = data.meaning || '-';
+
+    // 更新 TTS 图标
+    updateTTSMethodIcons();
     
     // 显示例句
     const examplesContainer = document.getElementById('examples-container');
@@ -318,14 +477,25 @@ document.addEventListener('click', function(e) {
     }
 });
 
-// 播放音频
-document.getElementById('play-audio-btn').addEventListener('click', function() {
-    const audio = document.getElementById('word-audio');
-    audio.play().catch(error => {
-        console.error('播放失败:', error);
-        alert('音频播放失败，可能是网络问题或浏览器限制');
+// 播放音频 - 美式
+const playUsBtn = document.getElementById('play-us-btn');
+if (playUsBtn) {
+    playUsBtn.addEventListener('click', function() {
+        if (currentWord) {
+            playAudioWithAccent(currentWord, 'us');
+        }
     });
-});
+}
+
+// 播放音频 - 英式
+const playUkBtn = document.getElementById('play-uk-btn');
+if (playUkBtn) {
+    playUkBtn.addEventListener('click', function() {
+        if (currentWord) {
+            playAudioWithAccent(currentWord, 'uk');
+        }
+    });
+}
 
 // 保存到单词本
 document.getElementById('save-btn').addEventListener('click', function() {

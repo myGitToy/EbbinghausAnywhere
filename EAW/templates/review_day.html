@@ -3,6 +3,21 @@
         <div class="card-header text-center bg-primary text-white">
             <h5 class="mb-0">{{ reviewdate }} - Review Items</h5>
         </div>
+        <!-- TTS 偏好设置 -->
+        <div class="bg-light p-2 border-bottom">
+            <div class="d-flex align-items-center justify-content-center">
+                <label for="tts-method-select" class="me-2 mb-0">
+                    <i class="fa fa-cog text-primary"></i> 发音方式：
+                </label>
+                <select id="tts-method-select" class="form-select form-select-sm" style="width: auto;">
+                    <option value="google">🔊 Google TTS（在线）</option>
+                    <option value="browser">🎧 浏览器 TTS（离线）</option>
+                </select>
+                <small class="text-muted ms-2">
+                    <i class="fa fa-info-circle"></i> 选择后将自动更新下方图标
+                </small>
+            </div>
+        </div>
         <div class="card-body p-0">
             {% if page_obj %}
             <!-- Single Table for All Items -->
@@ -113,18 +128,38 @@
                                     <p><strong>Category:</strong> {{ review_item.item.category.name }}</p>
                                     <p><strong>Input Date:</strong> {{ review_item.item.inputDate }}</p>
                                     {% if review_item.item.category.name == "单词" %}
-                                        {% if review_item.item.us_phonetic %}
-                                            <p><strong>US Phonetic:</strong> /{{ review_item.item.us_phonetic }}/</p>
-                                        {% endif %}
-                                        {% if review_item.item.uk_phonetic %}
-                                            <p><strong>UK Phonetic:</strong> /{{ review_item.item.uk_phonetic }}/</p>
-                                        {% endif %}
-                                        {% if review_item.item.src_tts %}
+                                        {% if review_item.item.us_phonetic or review_item.item.uk_phonetic %}
                                             <p><strong>Pronunciation:</strong></p>
-                                            <audio controls>
-                                                <source src="{{ review_item.item.src_tts }}" type="audio/mpeg">
-                                                Your browser does not support audio playback.
-                                            </audio>
+                                            <div class="mb-2">
+                                                <!-- 美式发音 -->
+                                                {% if review_item.item.us_phonetic %}
+                                                    <div class="d-flex align-items-center mb-2">
+                                                        <span class="badge bg-info me-2" style="min-width: 120px;">美 [{{ review_item.item.us_phonetic }}]</span>
+                                                        <button class="btn btn-sm btn-link p-0 me-1 tts-play-btn" 
+                                                                data-word="{{ review_item.item.item }}" 
+                                                                data-accent="us" 
+                                                                title="播放美式发音"
+                                                                onclick="event.stopPropagation(); event.preventDefault(); window.playAudioWithAccent('{{ review_item.item.item }}', 'us'); return false;">
+                                                            <i class="fa fa-volume-up text-primary"></i>
+                                                        </button>
+                                                        <small class="tts-method-icon text-muted" data-accent="us"></small>
+                                                    </div>
+                                                {% endif %}
+                                                <!-- 英式发音 -->
+                                                {% if review_item.item.uk_phonetic %}
+                                                    <div class="d-flex align-items-center mb-2">
+                                                        <span class="badge bg-info me-2" style="min-width: 120px;">英 [{{ review_item.item.uk_phonetic }}]</span>
+                                                        <button class="btn btn-sm btn-link p-0 me-1 tts-play-btn" 
+                                                                data-word="{{ review_item.item.item }}" 
+                                                                data-accent="uk" 
+                                                                title="播放英式发音"
+                                                                onclick="event.stopPropagation(); event.preventDefault(); window.playAudioWithAccent('{{ review_item.item.item }}', 'uk'); return false;">
+                                                            <i class="fa fa-volume-up text-primary"></i>
+                                                        </button>
+                                                        <small class="tts-method-icon text-muted" data-accent="uk"></small>
+                                                    </div>
+                                                {% endif %}
+                                            </div>
                                         {% endif %}
                                     {% endif %}
                                     {% autoescape off %}
@@ -185,7 +220,29 @@
   </div>
 
   <script>
-    console.log('Script Loaded');  // 检查脚本是否加载成功
+    console.log('review_day.html script loaded');
+    
+    // TTS 函数已在 review_home.html 中定义为全局函数
+    // 这里只需要初始化TTS图标
+    if (typeof window.updateTTSMethodIcons === 'function') {
+        window.updateTTSMethodIcons();
+    }
+
+    // 监听 localStorage 变化
+    window.addEventListener('storage', function(e) {
+        if (e.key === 'tts_preference') {
+            // 更新选择器
+            const ttsSelect = document.getElementById('tts-method-select');
+            if (ttsSelect) {
+                ttsSelect.value = window.getTTSPreference();
+            }
+            // 更新图标
+            if (typeof window.updateTTSMethodIcons === 'function') {
+                window.updateTTSMethodIcons();
+            }
+        }
+    });
+
     const feedbackUrls = {
       yes: '/review-feedback/yes/',
       no: '/review-feedback/no/',

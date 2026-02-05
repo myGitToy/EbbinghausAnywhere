@@ -23,32 +23,50 @@
                     </div>
                     
                     <div class="card-body p-4">
+                        <!-- TTS 偏好设置 -->
+                        {% if object.category.name == '单词' %}
+                            {% if object.uk_phonetic or object.us_phonetic %}
+                                <div class="mb-3 p-2 bg-light rounded">
+                                    <div class="d-flex align-items-center">
+                                        <label for="tts-method-select" class="me-2 mb-0">
+                                            <i class="fa fa-cog text-primary"></i> 发音方式：
+                                        </label>
+                                        <select id="tts-method-select" class="form-select form-select-sm" style="width: auto;">
+                                            <option value="google">🔊 Google TTS（在线）</option>
+                                            <option value="browser">🎧 浏览器 TTS（离线）</option>
+                                        </select>
+                                        <small class="text-muted ms-2">
+                                            <i class="fa fa-info-circle"></i> 选择后将自动更新下方图标
+                                        </small>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        {% endif %}
+
                         <!-- 音标和发音 -->
                         {% if object.category.name == '单词' %}
-                            {% if object.uk_phonetic or object.us_phonetic or object.src_tts %}
+                            {% if object.uk_phonetic or object.us_phonetic %}
                                 <div class="mb-3">
                                     <h6><i class="fa fa-volume-up"></i> 发音</h6>
                                     <div>
-                                        <!-- 美式发音 - 第一行 -->
+                                        <!-- 美式发音 -->
                                         {% if object.us_phonetic %}
                                             <div class="d-flex align-items-center mb-2">
                                                 <span class="badge bg-info me-2" style="min-width: 150px;">美 [{{ object.us_phonetic }}]</span>
-                                                {% if object.src_tts %}
-                                                    <button class="btn btn-sm btn-outline-primary" onclick="playAudio('{{ object.item }}', 'us')" type="button">
-                                                        <i class="fa fa-play"></i> 播放发音
-                                                    </button>
-                                                {% endif %}
+                                                <button class="btn btn-sm btn-link p-0 me-1 tts-play-btn" onclick="playAudioWithAccent('{{ object.item }}', 'us')" title="播放美式发音">
+                                                    <i class="fa fa-volume-up text-primary"></i>
+                                                </button>
+                                                <small class="tts-method-icon text-muted"></small>
                                             </div>
                                         {% endif %}
-                                        <!-- 英式发音 - 第二行 -->
+                                        <!-- 英式发音 -->
                                         {% if object.uk_phonetic %}
                                             <div class="d-flex align-items-center">
                                                 <span class="badge bg-info me-2" style="min-width: 150px;">英 [{{ object.uk_phonetic }}]</span>
-                                                {% if object.src_tts %}
-                                                    <button class="btn btn-sm btn-outline-primary" onclick="playAudio('{{ object.item }}', 'uk')" type="button">
-                                                        <i class="fa fa-play"></i> 播放发音
-                                                    </button>
-                                                {% endif %}
+                                                <button class="btn btn-sm btn-link p-0 me-1 tts-play-btn" onclick="playAudioWithAccent('{{ object.item }}', 'uk')" title="播放英式发音">
+                                                    <i class="fa fa-volume-up text-primary"></i>
+                                                </button>
+                                                <small class="tts-method-icon text-muted"></small>
                                             </div>
                                         {% endif %}
                                     </div>
@@ -184,29 +202,148 @@
 </div>
 
 <script>
+// TTS 偏好管理函数
+function getTTSPreference() {
+    return localStorage.getItem('tts_preference') || 'google';
+}
+
+function setTTSPreference(method) {
+    localStorage.setItem('tts_preference', method);
+    console.log('TTS 偏好已设置为:', method);
+}
+
+// Google TTS 播放函数
+function playAudioWithGoogle(word, accent) {
+    var tl = accent === 'us' ? 'en-US' : 'en-GB';
+    var audioUrl = 'https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=' + tl + '&q=' + encodeURIComponent(word);
+    var audio = new Audio(audioUrl);
+    audio.play().catch(function(error) {
+        console.error('Google TTS播放失败:', error);
+        alert('Google TTS 播放失败，请尝试切换到浏览器 TTS 模式');
+    });
+}
+
+// 浏览器 Web Speech API 播放函数
+function playAudioWithBrowser(word, accent) {
+    if (!('speechSynthesis' in window)) {
+        alert('您的浏览器不支持语音合成功能');
+        return;
+    }
+
+    // 停止当前播放
+    window.speechSynthesis.cancel();
+
+    var utterance = new SpeechSynthesisUtterance(word);
+    var lang = accent === 'us' ? 'en-US' : 'en-GB';
+    utterance.lang = lang;
+
+    // 设置语速和音调
+    utterance.rate = 0.9;
+    utterance.pitch = 1.0;
+
+    // 尝试选择匹配的语音
+    var voices = window.speechSynthesis.getVoices();
+    var matchingVoice = voices.find(function(voice) {
+        return voice.lang === lang;
+    });
+    if (matchingVoice) {
+        utterance.voice = matchingVoice;
+    }
+
+    window.speechSynthesis.speak(utterance);
+}
+
+// 根据口音播放（使用缓存的 TTS 偏好）
+function playAudioWithAccent(word, accent) {
+    const method = getTTSPreference();
+
+    if (method === 'browser') {
+        playAudioWithBrowser(word, accent);
+    } else {
+        playAudioWithGoogle(word, accent);
+    }
+}
+
 // 等待DOM加载完成
 document.addEventListener('DOMContentLoaded', function() {
+    // 初始化 TTS 偏好选择器
+    const ttsSelect = document.getElementById('tts-method-select');
+    if (ttsSelect) {
+        // 设置当前值
+        ttsSelect.value = getTTSPreference();
+
+        // 监听变化
+        ttsSelect.addEventListener('change', function() {
+            const newMethod = this.value;
+            setTTSPreference(newMethod);
+
+            // 更新 TTS 图标
+            updateTTSMethodIcons();
+        });
+    }
+
+    // 初始化语音库
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.getVoices();
+        window.speechSynthesis.onvoiceschanged = function() {
+            console.log('语音列表已加载');
+        };
+    }
+
+    // 更新 TTS 方法图标
+    function updateTTSMethodIcons() {
+        const method = getTTSPreference();
+        const icons = document.querySelectorAll('.tts-method-icon');
+
+        if (method === 'browser') {
+            icons.forEach(icon => {
+                icon.innerHTML = '<i class="fa fa-headphones text-secondary"></i>';
+                icon.title = '浏览器 TTS';
+            });
+        } else {
+            icons.forEach(icon => {
+                icon.innerHTML = '<i class="fa fa-google text-secondary"></i>';
+                icon.title = 'Google TTS';
+            });
+        }
+    }
+
+    // 初始化图标
+    updateTTSMethodIcons();
+
+    // 监听 localStorage 变化（其他页面可能修改了偏好）
+    window.addEventListener('storage', function(e) {
+        if (e.key === 'tts_preference') {
+            // 更新选择器
+            if (ttsSelect) {
+                ttsSelect.value = getTTSPreference();
+            }
+            // 更新图标
+            updateTTSMethodIcons();
+        }
+    });
+
     // 解析释义和例句
     var meaningText = document.getElementById('meaning-text');
     var examplesSection = document.getElementById('examples-section');
     var examplesContainer = document.getElementById('examples-container');
-    
+
     if (meaningText) {
         var content = meaningText.textContent || meaningText.innerText;
         var parts = content.split('例句:');
-        
+
         if (parts.length > 1) {
             // 更新释义部分（只显示释义文本）
             meaningText.innerHTML = '<p class="mb-0">' + parts[0].trim().replace(/^释义:\s*/, '') + '</p>';
-            
+
             // 显示例句部分
             examplesSection.classList.remove('d-none');
-            
+
             // 解析例句
             var examples = parts[1].trim().split('\n');
             var exampleHTML = '';
             var currentExample = '';
-            
+
             examples.forEach(function(line) {
                 line = line.trim();
                 if (line) {
@@ -222,28 +359,28 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 }
             });
-            
+
             // 添加最后一个例句
             if (currentExample) {
                 exampleHTML += '<div class="mb-2 p-2 border-start border-3 border-primary bg-light">' + currentExample + '</div>';
             }
-            
+
             examplesContainer.innerHTML = exampleHTML;
         } else {
             // 没有例句，只显示释义
             meaningText.innerHTML = '<p class="mb-0">' + content.trim().replace(/^释义:\s*/, '') + '</p>';
         }
     }
-    
+
     // 手动处理折叠功能
     var detailsToggleBtn = document.getElementById('details-toggle-btn');
     var detailsCollapse = document.getElementById('detailsCollapse');
     var toggleText = document.querySelector('.toggle-text');
-    
+
     if (detailsToggleBtn && detailsCollapse && toggleText) {
         detailsToggleBtn.addEventListener('click', function() {
             var isExpanded = detailsCollapse.classList.contains('show');
-            
+
             if (isExpanded) {
                 // 折叠
                 detailsCollapse.classList.remove('show');
@@ -258,17 +395,5 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
-
-// 播放音频函数（支持美式和英式）
-function playAudio(word, accent) {
-    var tl = accent === 'us' ? 'en-US' : 'en-GB';
-    var audioUrl = 'https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=' + tl + '&q=' + encodeURIComponent(word);
-    
-    var audio = new Audio(audioUrl);
-    audio.play().catch(function(error) {
-        console.error('播放失败:', error);
-        alert('音频播放失败，可能是网络问题或浏览器限制');
-    });
-}
 </script>
 {% endblock %}

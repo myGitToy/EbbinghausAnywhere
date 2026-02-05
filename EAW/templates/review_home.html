@@ -63,6 +63,114 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script>
+    // ========== TTS 函数定义 (全局作用域) ==========
+    
+    // TTS 偏好管理函数
+    window.getTTSPreference = function() {
+        return localStorage.getItem('tts_preference') || 'google';
+    };
+
+    // Google TTS 播放函数
+    window.playAudioWithGoogle = function(word, accent) {
+        console.log('Google TTS开始播放:', word, accent);
+        var tl = accent === 'us' ? 'en-US' : 'en-GB';
+        var audioUrl = 'https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=' + tl + '&q=' + encodeURIComponent(word);
+        console.log('音频URL:', audioUrl);
+        var audio = new Audio(audioUrl);
+        audio.play().then(function() {
+            console.log('Google TTS播放成功');
+        }).catch(function(error) {
+            console.error('Google TTS播放失败:', error);
+            alert('Google TTS 播放失败，请尝试切换到浏览器 TTS 模式');
+        });
+    };
+
+    // 浏览器 Web Speech API 播放函数
+    window.playAudioWithBrowser = function(word, accent) {
+        console.log('浏览器TTS开始播放:', word, accent);
+        if (!('speechSynthesis' in window)) {
+            alert('您的浏览器不支持语音合成功能');
+            return;
+        }
+
+        // 停止当前播放
+        window.speechSynthesis.cancel();
+
+        var utterance = new SpeechSynthesisUtterance(word);
+        var lang = accent === 'us' ? 'en-US' : 'en-GB';
+        utterance.lang = lang;
+
+        // 设置语速和音调
+        utterance.rate = 0.9;
+        utterance.pitch = 1.0;
+
+        // 尝试选择匹配的语音
+        var voices = window.speechSynthesis.getVoices();
+        console.log('可用语音数量:', voices.length);
+        var matchingVoice = voices.find(function(voice) {
+            return voice.lang === lang;
+        });
+        if (matchingVoice) {
+            utterance.voice = matchingVoice;
+            console.log('使用语音:', matchingVoice.name);
+        } else {
+            console.log('未找到匹配的语音，使用默认语音');
+        }
+
+        utterance.onstart = function() {
+            console.log('浏览器TTS开始播放');
+        };
+        utterance.onend = function() {
+            console.log('浏览器TTS播放完成');
+        };
+        utterance.onerror = function(event) {
+            console.error('浏览器TTS播放错误:', event);
+        };
+
+        window.speechSynthesis.speak(utterance);
+    };
+
+    // 根据口音播放（使用缓存的 TTS 偏好）
+    window.playAudioWithAccent = function(word, accent) {
+        console.log('播放音频:', word, accent);
+        const method = window.getTTSPreference();
+        console.log('TTS方法:', method);
+
+        if (method === 'browser') {
+            console.log('使用浏览器TTS播放:', word);
+            window.playAudioWithBrowser(word, accent);
+        } else {
+            console.log('使用Google TTS播放:', word);
+            window.playAudioWithGoogle(word, accent);
+        }
+    };
+
+    // 更新 TTS 方法图标
+    window.updateTTSMethodIcons = function() {
+        const method = window.getTTSPreference();
+        const icons = document.querySelectorAll('.tts-method-icon');
+
+        if (method === 'browser') {
+            icons.forEach(icon => {
+                icon.innerHTML = '<i class="fa fa-headphones text-secondary"></i>';
+                icon.title = '浏览器 TTS';
+            });
+        } else {
+            icons.forEach(icon => {
+                icon.innerHTML = '<i class="fa fa-google text-secondary"></i>';
+                icon.title = 'Google TTS';
+            });
+        }
+    };
+
+    // 初始化语音库
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.getVoices();
+        window.speechSynthesis.onvoiceschanged = function() {
+            console.log('语音列表已加载');
+        };
+    }
+
     // 使用 window.onload 确保页面完全加载后再执行代码
     window.onload = function() {
         // 获取当天日期并格式化为 YYYY-MM-DD
@@ -157,6 +265,24 @@
 
             // 重新绑定动态内容中的事件
             bindReviewDayEvents();  // 确保绑定按钮事件
+            
+            // 更新TTS图标和绑定TTS偏好选择器
+            window.updateTTSMethodIcons();
+            const ttsSelect = document.getElementById('tts-method-select');
+            if (ttsSelect) {
+                // 设置当前值
+                ttsSelect.value = window.getTTSPreference();
+
+                // 监听变化
+                ttsSelect.addEventListener('change', function() {
+                    const newMethod = this.value;
+                    localStorage.setItem('tts_preference', newMethod);
+                    console.log('TTS 偏好已设置为:', newMethod);
+
+                    // 更新 TTS 图标
+                    window.updateTTSMethodIcons();
+                });
+            }
 
             // 手动触发 MathJax 渲染
             if (window.MathJax) {

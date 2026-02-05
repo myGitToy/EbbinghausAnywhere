@@ -364,8 +364,6 @@ def category_update(request, category_id):
     if request.method == 'POST':
         try:
             category = get_object_or_404(Category, id=category_id, user=request.user)
-            if category.is_default:
-                return JsonResponse({'success': False, 'error': '不能修改默认分类'})
 
             data = json.loads(request.body)
             name = data.get('name', '').strip()
@@ -387,20 +385,22 @@ def category_update(request, category_id):
 @login_required
 @ensure_csrf_cookie
 def category_delete(request, category_id):
-    """删除分类"""
+    """删除分类（级联删除该分类下的所有单词）"""
     if request.method == 'POST':
         try:
             category = get_object_or_404(Category, id=category_id, user=request.user)
-            if category.is_default:
-                return JsonResponse({'success': False, 'error': '不能删除默认分类'})
 
-            # 检查该分类下是否有单词
+            # 统计该分类下的单词数量
             item_count = Item.objects.filter(user=request.user, category=category).count()
-            if item_count > 0:
-                return JsonResponse({'success': False, 'error': f'该分类下还有 {item_count} 个单词，请先移动或删除这些单词'})
 
+            # 删除分类（由于设置了 CASCADE，会自动删除该分类下的所有单词）
             category.delete()
-            return JsonResponse({'success': True})
+
+            return JsonResponse({
+                'success': True,
+                'deleted_items': item_count,
+                'message': f'已删除分类及其 {item_count} 个单词'
+            })
         except Exception as e:
             logger.error(f"Error deleting category: {e}")
             return JsonResponse({'success': False, 'error': str(e)})

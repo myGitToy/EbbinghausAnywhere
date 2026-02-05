@@ -2,7 +2,6 @@ from django.db import models
 from django.urls import reverse
 from django.contrib.auth.models import User
 from dirtyfields import DirtyFieldsMixin
-from django.core.exceptions import ValidationError
 
 # Create your models here.
 # Word Category defined by user
@@ -23,15 +22,9 @@ class Category(DirtyFieldsMixin, models.Model):
         return f"{self.sort_order}: {self.name}"
 
     def save(self, *args, **kwargs):
-        # 禁止修改默认分类的 name
-        if self.is_default and self.pk and 'name' in self.get_dirty_fields():
-            raise ValidationError("Cannot modify the name of the default category.")
         super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
-        # 禁止删除默认分类
-        if self.is_default:
-            raise ValidationError("Cannot delete the default category.")
         super().delete(*args, **kwargs)
 
 class Proficiency(models.Model):

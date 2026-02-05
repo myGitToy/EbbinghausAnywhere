@@ -32,7 +32,7 @@ import csv
 from time import sleep
 import logging
 import re
-from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.csrf import csrf_exempt, ensure_csrf_cookie
 import json
 from django.template.loader import render_to_string
 from .translate import baidu_translate, parse_json_to_string, check_api_keys
@@ -239,12 +239,35 @@ def home(request):
 #     return render(request, 'index.html', context)
 
 @login_required
+@ensure_csrf_cookie
 def item_list(request):
+    # 获取筛选的分类ID
+    category_id = request.GET.get('category')
+
     # 获取当前登录用户的所有 Item
-    item_list = Item.objects.filter(user=request.user).order_by('-inputDate')
+    item_list = Item.objects.filter(user=request.user)
+
+    # 如果指定了分类，进行筛选
+    if category_id:
+        item_list = item_list.filter(category_id=category_id)
+
+    item_list = item_list.order_by('-inputDate')
+
+    # 获取所有分类（包括没有单词的分类）
+    all_categories = Category.objects.filter(user=request.user).order_by('sort_order', 'name')
 
     # 统计每个类别下的条目数量
-    category_stats = item_list.values('category__name').annotate(count=Count('category')).order_by('-count')
+    category_stats = []
+    for category in all_categories:
+        count = Item.objects.filter(user=request.user, category=category).count()
+        category_stats.append({
+            'category__name': category.name,
+            'category__id': category.id,
+            'count': count
+        })
+
+    # 按 count 降序排序
+    category_stats.sort(key=lambda x: x['count'], reverse=True)
 
     # 确保 item_list 不为空时才进行分页
     if item_list.exists():
@@ -255,8 +278,186 @@ def item_list(request):
         # 如果 item_list 为空，设置 page_obj 为一个空列表或自定义的对象
         page_obj = []
 
+    context = {
+        'page_obj': page_obj,
+        'category_stats': category_stats,
+        'selected_category': int(category_id) if category_id else None
+    }
+
+    # 如果是 AJAX 请求，返回 JSON 数据
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        items_data = []
+        for item in page_obj if page_obj else []:
+            items_data.append({
+                'id': item.id,
+                'item': item.item,
+                'category': item.category.name,
+                'category_id': item.category.id,
+                'inputDate': item.inputDate.isoformat() if item.inputDate else None,
+                'next_review_date': item.next_review_date.isoformat() if item.next_review_date else None,
+                'detail_url': reverse('item-detail', args=[item.id])
+            })
+        return JsonResponse({
+            'items': items_data,
+            'has_next': page_obj.has_next() if page_obj else False,
+            'has_previous': page_obj.has_previous() if page_obj else False,
+            'current_page': page_obj.number if page_obj else 1,
+            'total_pages': page_obj.paginator.num_pages if page_obj else 1
+        })
+
     # 渲染模板，传递分页对象和类别统计信息
-    return render(request, 'list.html', {'page_obj': page_obj, 'category_stats': category_stats})
+    return render(request, 'list.html', context)
+
+
+# ==================== 分类管理视图 ====================
+
+@login_required
+@ensure_csrf_cookie
+def category_list(request):
+    """返回当前用户的所有分类（JSON）"""
+    categories = Category.objects.filter(user=request.user).order_by('sort_order', 'name')
+    data = [{
+        'id': cat.id,
+        'name': cat.name,
+        'sort_order': cat.sort_order,
+        'is_default': cat.is_default,
+        'item_count': Item.objects.filter(user=request.user, category=cat).count()
+    } for cat in categories]
+    return JsonResponse({'categories': data})
+
+
+@login_required
+@ensure_csrf_cookie
+def category_create(request):
+    """创建新分类"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            name = data.get('name', '').strip()
+            if not name:
+                return JsonResponse({'success': False, 'error': '分类名称不能为空'})
+
+            # 检查是否已存在
+            if Category.objects.filter(user=request.user, name=name).exists():
+                return JsonResponse({'success': False, 'error': '该分类已存在'})
+
+            # 获取当前最大 sort_order
+            max_order = Category.objects.filter(user=request.user).aggregate(
+                max_order=Max('sort_order')
+            )['max_order'] or 0
+
+            category = Category.objects.create(
+                user=request.user,
+                name=name,
+                sort_order=max_order + 1
+            )
+            return JsonResponse({'success': True, 'category': {'id': category.id, 'name': category.name}})
+        except Exception as e:
+            logger.error(f"Error creating category: {e}")
+            return JsonResponse({'success': False, 'error': str(e)})
+
+
+@login_required
+@ensure_csrf_cookie
+def category_update(request, category_id):
+    """更新分类名称"""
+    if request.method == 'POST':
+        try:
+            category = get_object_or_404(Category, id=category_id, user=request.user)
+            if category.is_default:
+                return JsonResponse({'success': False, 'error': '不能修改默认分类'})
+
+            data = json.loads(request.body)
+            name = data.get('name', '').strip()
+            if not name:
+                return JsonResponse({'success': False, 'error': '分类名称不能为空'})
+
+            # 检查新名称是否与其他分类重复
+            if Category.objects.filter(user=request.user, name=name).exclude(id=category_id).exists():
+                return JsonResponse({'success': False, 'error': '该分类名称已存在'})
+
+            category.name = name
+            category.save()
+            return JsonResponse({'success': True})
+        except Exception as e:
+            logger.error(f"Error updating category: {e}")
+            return JsonResponse({'success': False, 'error': str(e)})
+
+
+@login_required
+@ensure_csrf_cookie
+def category_delete(request, category_id):
+    """删除分类"""
+    if request.method == 'POST':
+        try:
+            category = get_object_or_404(Category, id=category_id, user=request.user)
+            if category.is_default:
+                return JsonResponse({'success': False, 'error': '不能删除默认分类'})
+
+            # 检查该分类下是否有单词
+            item_count = Item.objects.filter(user=request.user, category=category).count()
+            if item_count > 0:
+                return JsonResponse({'success': False, 'error': f'该分类下还有 {item_count} 个单词，请先移动或删除这些单词'})
+
+            category.delete()
+            return JsonResponse({'success': True})
+        except Exception as e:
+            logger.error(f"Error deleting category: {e}")
+            return JsonResponse({'success': False, 'error': str(e)})
+
+
+# ==================== 批量操作视图 ====================
+
+@login_required
+@ensure_csrf_cookie
+def batch_delete_items(request):
+    """批量删除单词"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            item_ids = data.get('item_ids', [])
+
+            if not item_ids:
+                return JsonResponse({'success': False, 'error': '请选择要删除的单词'})
+
+            # 删除属于当前用户的单词
+            count, _ = Item.objects.filter(user=request.user, id__in=item_ids).delete()
+
+            return JsonResponse({'success': True, 'deleted_count': count})
+        except Exception as e:
+            logger.error(f"Error batch deleting items: {e}")
+            return JsonResponse({'success': False, 'error': str(e)})
+
+
+@login_required
+@ensure_csrf_cookie
+def batch_move_items(request):
+    """批量移动单词到指定分类"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            item_ids = data.get('item_ids', [])
+            target_category_id = data.get('target_category_id')
+
+            if not item_ids:
+                return JsonResponse({'success': False, 'error': '请选择要移动的单词'})
+
+            if not target_category_id:
+                return JsonResponse({'success': False, 'error': '请选择目标分类'})
+
+            # 验证目标分类属于当前用户
+            target_category = get_object_or_404(Category, id=target_category_id, user=request.user)
+
+            # 更新单词的分类
+            count = Item.objects.filter(
+                user=request.user,
+                id__in=item_ids
+            ).update(category=target_category)
+
+            return JsonResponse({'success': True, 'moved_count': count})
+        except Exception as e:
+            logger.error(f"Error batch moving items: {e}")
+            return JsonResponse({'success': False, 'error': str(e)})
 
 
 @method_decorator(login_required, name='dispatch')  # 确保用户已登录

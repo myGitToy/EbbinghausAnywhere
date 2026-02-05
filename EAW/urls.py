@@ -57,4 +57,14 @@ urlpatterns = [
     path('deepseek/query/', views.deepseek_query_view, name='deepseek-query'),
     path('deepseek/save/', views.deepseek_save_view, name='deepseek-save'),
     path('api/check-deepseek-keys/', views.check_deepseek_keys_view, name='check-deepseek-keys'),
+
+    # 分类管理路由
+    path('api/categories/', views.category_list, name='category-list'),
+    path('api/category/create/', views.category_create, name='category-create'),
+    path('api/category/<int:category_id>/update/', views.category_update, name='category-update'),
+    path('api/category/<int:category_id>/delete/', views.category_delete, name='category-delete'),
+
+    # 批量操作路由
+    path('api/batch/delete/', views.batch_delete_items, name='batch-delete'),
+    path('api/batch/move/', views.batch_move_items, name='batch-move'),
 ]

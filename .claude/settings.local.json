@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(if exist db.sqlite3 copy db.sqlite3 db.sqlite3.backup_%date:~0,4%%date:~5,2%%date:~8,2%)",
+      "Bash(ls:*)",
+      "Bash(python3 manage.py makemigrations:*)",
+      "Bash(python3:*)",
+      "Bash(py -3:*)",
+      "Bash(/c/Users/GHUIQ/AppData/Local/Microsoft/WindowsApps/python manage.py makemigrations)",
+      "Bash(docker:*)",
+      "Bash(where py python python3)"
+    ]
+  }
+}

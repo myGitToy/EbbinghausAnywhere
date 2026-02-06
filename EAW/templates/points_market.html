@@ -1,0 +1,314 @@
+{% extends "base_generic.html" %}
+{% load static %}
+
+{% block title %}
+<title>积分商城 - Ebbinghaus Anywhere</title>
+{% endblock %}
+
+{% block content %}
+{% include "includes/banner.html" %}
+
+<section class="py-5" style="background-color: #f8f9fa;">
+    <div class="container">
+        <!-- 积分余额卡片 -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card bg-primary text-white shadow">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">我的积分</h5>
+                        <h2 class="display-4">{{ points_account.current_points }}</h2>
+                        <p class="mb-0">
+                            累计获得: {{ points_account.total_earned }} |
+                            累计消费: {{ points_account.total_spent }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 签到区域 -->
+        <div class="row mb-4">
+            <div class="col-12">
+                {% if not has_checkin_today %}
+                <div class="card bg-warning text-dark shadow">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">
+                            <i class="fa fa-calendar-check"></i> 每日签到
+                        </h5>
+                        <p class="card-text">签到可获得 {{ config.daily_checkin_points }} 积分</p>
+                        <button class="btn btn-dark btn-lg" id="checkin-btn">
+                            立即签到 (+{{ config.daily_checkin_points }}积分)
+                        </button>
+                    </div>
+                </div>
+                {% else %}
+                <div class="card bg-success text-white shadow">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">
+                            <i class="fa fa-check-circle"></i> 今日已签到
+                        </h5>
+                        <p class="card-text">连续签到 {{ streak.current_checkin_streak }} 天</p>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- 连续学习信息 -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card bg-info text-white shadow">
+                    <div class="card-body">
+                        <div class="row text-center">
+                            <div class="col-6">
+                                <h6>连续学习</h6>
+                                <h3>{{ streak.current_streak }} 天</h3>
+                                <small>最长: {{ streak.longest_streak }} 天</small>
+                            </div>
+                            <div class="col-6">
+                                <h6>连续签到</h6>
+                                <h3>{{ streak.current_checkin_streak }} 天</h3>
+                                <small>最长: {{ streak.longest_checkin_streak }} 天</small>
+                            </div>
+                        </div>
+                        {% if config.streak_reward_enabled %}
+                        <div class="text-center mt-2">
+                            <small>连续学习 {{ config.streak_reward_days }} 天可获得 {{ config.streak_reward_points }} 积分奖励</small>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 兑换区域 -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card shadow">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0"><i class="fa fa-shopping-cart"></i> 兑换游戏时长</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted">
+                            <i class="fa fa-info-circle"></i>
+                            当前汇率：1 积分 = {{ config.minutes_per_point }} 分钟
+                            <a href="{% url 'points-config' %}" class="btn btn-sm btn-outline-primary float-end">修改配置</a>
+                        </p>
+
+                        <!-- 加减按钮选择器 -->
+                        <div class="row align-items-center mb-3">
+                            <label class="col-sm-3 col-form-label text-end">选择时长：</label>
+                            <div class="col-sm-6">
+                                <div class="input-group">
+                                    <button class="btn btn-outline-secondary" type="button" id="btn-minus">
+                                        <i class="fa fa-minus"></i>
+                                    </button>
+                                    <input type="number"
+                                           class="form-control text-center"
+                                           id="minutes-input"
+                                           value="{{ config.redemption_step }}"
+                                           min="{{ config.min_redemption_minutes }}"
+                                           max="{{ config.max_redemption_minutes }}"
+                                           step="{{ config.redemption_step }}">
+                                    <span class="input-group-text">分钟</span>
+                                    <button class="btn btn-outline-secondary" type="button" id="btn-plus">
+                                        <i class="fa fa-plus"></i>
+                                    </button>
+                                </div>
+                                <small class="text-muted">范围: {{ config.min_redemption_minutes }}-{{ config.max_redemption_minutes }} 分钟，步长: {{ config.redemption_step }}</small>
+                            </div>
+                        </div>
+
+                        <!-- 显示所需积分 -->
+                        <div class="alert alert-info">
+                            <div class="row align-items-center">
+                                <div class="col">
+                                    <strong>需要 <span id="points-needed">{{ config.redemption_step }}</span> 积分</strong>
+                                </div>
+                                <div class="col-auto">
+                                    <button class="btn btn-success btn-lg" id="redeem-btn">
+                                        <i class="fa fa-exchange-alt"></i> 确认兑换
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 最近兑换记录 -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card shadow">
+                    <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="fa fa-history"></i> 最近兑换记录</h5>
+                        <a href="{% url 'points-history' %}" class="btn btn-light btn-sm">查看全部</a>
+                    </div>
+                    <div class="card-body">
+                        {% if recent_redemptions %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>时间</th>
+                                        <th>游戏时长</th>
+                                        <th>消费积分</th>
+                                        <th>汇率</th>
+                                        <th>状态</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for redemption in recent_redemptions %}
+                                    <tr>
+                                        <td>{{ redemption.created_at|date:"Y-m-d H:i" }}</td>
+                                        <td><strong>{{ redemption.game_minutes }}</strong> 分钟</td>
+                                        <td class="text-danger">{{ redemption.points_spent }} 积分</td>
+                                        <td>1积分={{ redemption.exchange_rate }}分钟</td>
+                                        <td>
+                                            {% if redemption.status == 'COMPLETED' %}
+                                                <span class="badge bg-success">已完成</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">{{ redemption.get_status_display }}</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-info mb-0">
+                            <i class="fa fa-info-circle"></i> 暂无兑换记录
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const minutesInput = document.getElementById('minutes-input');
+    const pointsNeededEl = document.getElementById('points-needed');
+    const minutesPerPoint = {{ config.minutes_per_point }};
+    const step = {{ config.redemption_step }};
+    const min = {{ config.min_redemption_minutes }};
+    const max = {{ config.max_redemption_minutes }};
+
+    // 计算所需积分
+    function calculatePoints() {
+        const minutes = parseInt(minutesInput.value) || 0;
+        const points = Math.ceil(minutes / minutesPerPoint);
+        pointsNeededEl.textContent = points;
+
+        // 更新兑换按钮状态
+        const redeemBtn = document.getElementById('redeem-btn');
+        if (minutes < min || minutes > max) {
+            redeemBtn.disabled = true;
+        } else {
+            redeemBtn.disabled = false;
+        }
+    }
+
+    // 加减按钮
+    document.getElementById('btn-minus').addEventListener('click', function() {
+        let current = parseInt(minutesInput.value) || 0;
+        const newValue = Math.max(min, current - step);
+        minutesInput.value = newValue;
+        calculatePoints();
+    });
+
+    document.getElementById('btn-plus').addEventListener('click', function() {
+        let current = parseInt(minutesInput.value) || 0;
+        const newValue = Math.min(max, current + step);
+        minutesInput.value = newValue;
+        calculatePoints();
+    });
+
+    minutesInput.addEventListener('change', calculatePoints);
+    minutesInput.addEventListener('input', calculatePoints);
+
+    // 兑换按钮
+    document.getElementById('redeem-btn').addEventListener('click', function() {
+        const minutes = parseInt(minutesInput.value);
+        const points = parseInt(pointsNeededEl.textContent);
+
+        if (minutes < min || minutes > max) {
+            alert(`时长必须在 ${min}-${max} 分钟之间`);
+            return;
+        }
+
+        if (confirm(`确认兑换 ${minutes} 分钟游戏时长？\n需要消费 ${points} 积分`)) {
+            const redeemBtn = this;
+            redeemBtn.disabled = true;
+            redeemBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> 兑换中...';
+
+            fetch('/points/redeem/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({ minutes: minutes })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    location.reload();
+                } else {
+                    alert('兑换失败：' + data.message);
+                    redeemBtn.disabled = false;
+                    redeemBtn.innerHTML = '<i class="fa fa-exchange-alt"></i> 确认兑换';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('兑换失败，请稍后重试');
+                redeemBtn.disabled = false;
+                redeemBtn.innerHTML = '<i class="fa fa-exchange-alt"></i> 确认兑换';
+            });
+        }
+    });
+
+    // 签到按钮
+    const checkinBtn = document.getElementById('checkin-btn');
+    if (checkinBtn) {
+        checkinBtn.addEventListener('click', function() {
+            this.disabled = true;
+            this.innerHTML = '<i class="fa fa-spinner fa-spin"></i> 签到中...';
+
+            fetch('/points/checkin/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    location.reload();
+                } else {
+                    alert(data.message);
+                    this.disabled = false;
+                    this.innerHTML = `立即签到 (+{{ config.daily_checkin_points }}积分)`;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('签到失败，请稍后重试');
+                this.disabled = false;
+                this.innerHTML = `立即签到 (+{{ config.daily_checkin_points }}积分)`;
+            });
+        });
+    }
+
+    // 初始化计算
+    calculatePoints();
+});
+</script>
+{% endblock %}

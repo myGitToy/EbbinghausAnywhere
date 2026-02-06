@@ -27,6 +27,9 @@ from django.http import HttpResponse
 from django.urls import reverse
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
+from django.db import transaction
+from django.db.models import Q
+from django.views.decorators.http import require_http_methods
 import json
 import csv
 from time import sleep
@@ -919,6 +922,65 @@ def ReviewFeedbackYes(request):
 
             curword.save()
 
+            # ========== 积分系统集成：复习奖励 ==========
+            try:
+                from django.utils import timezone
+                from EAW.models import UserPoints, PointHistory, UserPointsConfig, UserStreak
+
+                points_account, created = UserPoints.objects.get_or_create(
+                    user=request.user,
+                    defaults={'current_points': 0}
+                )
+
+                # 检查今天是否已经对该单词获得过积分
+                today = timezone.now().date()
+                already_earned_today = PointHistory.objects.filter(
+                    user=request.user,
+                    reference_id=f"review_{curword.id}",
+                    created_at__date=today
+                ).exists()
+
+                if not already_earned_today:
+                    # 基础积分：复习完成
+                    points_earned = 1
+                    points_account.add_points(
+                        points=points_earned,
+                        reason=f"完成单词复习：{curword.item}",
+                        reference_id=f"review_{curword.id}"
+                    )
+
+                    # 更新连续学习记录
+                    streak, _ = UserStreak.objects.get_or_create(user=request.user)
+                    streak.update_study_streak(today)
+
+                    # 检查连续学习奖励
+                    config, _ = UserPointsConfig.objects.get_or_create(user=request.user)
+                    streak_reward = streak.check_streak_reward(config)
+                    if streak_reward:
+                        points_account.add_points(
+                            points=streak_reward,
+                            reason=f"连续学习{config.streak_reward_days}天奖励",
+                            reference_id=f"streak_{streak.current_streak}"
+                        )
+                        points_earned += streak_reward
+
+                    # 返回包含积分信息的响应
+                    return JsonResponse({
+                        'success': True,
+                        'message': 'Proficiency updated to MASTERED.',
+                        'mastery': curword.get_proficiency_display(),
+                        'reviewed_today': True,
+                        'points_earned': points_earned,
+                        'current_points': points_account.current_points,
+                        'current_streak': streak.current_streak
+                    })
+            except Exception as points_error:
+                # 积分系统失败不应影响主流程，记录日志但不抛出异常
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f"Points system error: {str(points_error)}")
+
+            # 返回正常响应（没有积分奖励或积分系统出错）
             return JsonResponse({
                 'success': True,
                 'message': 'Proficiency updated to MASTERED.',
@@ -1599,5 +1661,247 @@ def check_deepseek_keys_view(request):
     """检查 DeepSeek API Key 是否配置"""
     configured = check_deepseek_keys()
     return JsonResponse({'configured': configured})
+
+
+# ==================== 积分系统视图 ====================
+
+@login_required
+def points_market_view(request):
+    """积分商城页面"""
+    from EAW.models import UserPoints, UserPointsConfig, UserStreak, PointRedemption, PointHistory
+
+    user = request.user
+
+    # 获取用户积分和配置
+    points_account, _ = UserPoints.objects.get_or_create(user=user)
+    config, _ = UserPointsConfig.objects.get_or_create(user=user)
+    streak, _ = UserStreak.objects.get_or_create(user=user)
+
+    # 检查今天是否已签到
+    today = now().date()
+    has_checkin_today = PointHistory.objects.filter(
+        user=user,
+        reason__startswith='每日签到',
+        created_at__date=today
+    ).exists()
+
+    # 最近兑换记录
+    recent_redemptions = PointRedemption.objects.filter(
+        user=user
+    ).order_by('-created_at')[:10]
+
+    context = {
+        'points_account': points_account,
+        'config': config,
+        'streak': streak,
+        'has_checkin_today': has_checkin_today,
+        'recent_redemptions': recent_redemptions
+    }
+    return render(request, 'points_market.html', context)
+
+
+@login_required
+def points_config_view(request):
+    """用户积分配置页面"""
+    from EAW.models import UserPoints, UserPointsConfig, UserStreak
+
+    config, _ = UserPointsConfig.objects.get_or_create(user=request.user)
+
+    if request.method == 'POST':
+        # 更新配置
+        config.minutes_per_point = float(request.POST.get('minutes_per_point', 1.0))
+        config.redemption_step = int(request.POST.get('redemption_step', 10))
+        config.min_redemption_minutes = int(request.POST.get('min_redemption_minutes', 1))
+        config.max_redemption_minutes = int(request.POST.get('max_redemption_minutes', 300))
+        config.daily_checkin_enabled = request.POST.get('daily_checkin') == 'on'
+        config.daily_checkin_points = int(request.POST.get('daily_checkin_points', 1))
+        config.streak_reward_enabled = request.POST.get('streak_reward') == 'on'
+        config.streak_reward_points = int(request.POST.get('streak_reward_points', 5))
+        config.streak_reward_days = int(request.POST.get('streak_reward_days', 7))
+        config.save()
+
+        messages.success(request, '配置已更新')
+        return redirect('points-config')
+
+    points_account, _ = UserPoints.objects.get_or_create(user=request.user)
+    streak, _ = UserStreak.objects.get_or_create(user=request.user)
+
+    context = {
+        'config': config,
+        'points_account': points_account,
+        'streak': streak
+    }
+    return render(request, 'points_config.html', context)
+
+
+@login_required
+@require_http_methods(["POST"])
+def redeem_game_time_view(request):
+    """兑换游戏时长API"""
+    from EAW.models import UserPoints, UserPointsConfig, PointRedemption
+
+    try:
+        data = json.loads(request.body)
+        minutes = int(data.get('minutes', 0))
+
+        if minutes <= 0:
+            return JsonResponse({'success': False, 'message': '请选择有效的时长'})
+
+        user = request.user
+
+        # 获取用户配置
+        config, _ = UserPointsConfig.objects.get_or_create(user=user)
+
+        # 验证兑换时长范围
+        if minutes < config.min_redemption_minutes:
+            return JsonResponse({
+                'success': False,
+                'message': f'最少兑换{config.min_redemption_minutes}分钟'
+            })
+        if minutes > config.max_redemption_minutes:
+            return JsonResponse({
+                'success': False,
+                'message': f'最多兑换{config.max_redemption_minutes}分钟'
+            })
+
+        # 计算所需积分
+        points_needed = int(minutes / config.minutes_per_point)
+
+        # 获取积分账户
+        points_account, _ = UserPoints.objects.get_or_create(user=user)
+
+        # 检查积分是否足够
+        if points_account.current_points < points_needed:
+            return JsonResponse({
+                'success': False,
+                'message': f'积分不足！需要{points_needed}积分，当前{points_account.current_points}积分'
+            })
+
+        # 使用事务扣除积分并创建兑换记录
+        with transaction.atomic():
+            # 扣除积分
+            points_account.spend_points(
+                points=points_needed,
+                reason=f"兑换{minutes}分钟游戏时长",
+                reference_id=f"redeem_{now().timestamp()}"
+            )
+
+            # 创建兑换记录
+            PointRedemption.objects.create(
+                user=user,
+                points_spent=points_needed,
+                game_minutes=minutes,
+                exchange_rate=config.minutes_per_point,
+                status='COMPLETED'
+            )
+
+        return JsonResponse({
+            'success': True,
+            'message': f'成功兑换{minutes}分钟游戏时长！消费{points_needed}积分',
+            'remaining_points': points_account.current_points
+        })
+
+    except Exception as e:
+        logger.error(f"Redemption error: {str(e)}")
+        return JsonResponse({'success': False, 'message': f'兑换失败：{str(e)}'})
+
+
+@login_required
+@require_http_methods(["POST"])
+def daily_checkin_view(request):
+    """每日签到API"""
+    from EAW.models import UserPoints, UserPointsConfig, UserStreak, PointHistory
+
+    try:
+        user = request.user
+        today = now().date()
+
+        # 检查今天是否已签到
+        existing = PointHistory.objects.filter(
+            user=user,
+            reason__startswith='每日签到',
+            created_at__date=today
+        ).exists()
+
+        if existing:
+            return JsonResponse({'success': False, 'message': '今天已经签到过了'})
+
+        # 获取配置
+        config, _ = UserPointsConfig.objects.get_or_create(user=user)
+
+        if not config.daily_checkin_enabled:
+            return JsonResponse({'success': False, 'message': '签到功能未启用'})
+
+        # 更新连续签到
+        streak, _ = UserStreak.objects.get_or_create(user=user)
+        streak.update_checkin_streak(today)
+
+        # 给予积分奖励
+        points_account, _ = UserPoints.objects.get_or_create(user=user)
+        points_account.add_points(
+            points=config.daily_checkin_points,
+            reason=f"每日签到（连续{streak.current_checkin_streak}天）",
+            reference_id=f"checkin_{today}"
+        )
+
+        return JsonResponse({
+            'success': True,
+            'message': f'签到成功！获得{config.daily_checkin_points}积分',
+            'checkin_streak': streak.current_checkin_streak,
+            'points_earned': config.daily_checkin_points,
+            'current_points': points_account.current_points
+        })
+
+    except Exception as e:
+        logger.error(f"Checkin error: {str(e)}")
+        return JsonResponse({'success': False, 'message': str(e)})
+
+
+@login_required
+def points_history_view(request):
+    """积分历史记录页面"""
+    from EAW.models import PointHistory
+
+    user = request.user
+    page_number = request.GET.get('page', 1)
+    per_page = int(request.GET.get('per_page', 20))
+    change_type = request.GET.get('change_type', '')
+
+    history_query = PointHistory.objects.filter(user=user)
+    if change_type:
+        history_query = history_query.filter(change_type=change_type)
+
+    paginator = Paginator(history_query, per_page)
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        'page_obj': page_obj,
+        'change_type': change_type,
+        'per_page': per_page
+    }
+    return render(request, 'points_history.html', context)
+
+
+@login_required
+def get_points_balance_api(request):
+    """获取用户积分余额API（供AJAX调用）"""
+    from EAW.models import UserPoints
+
+    try:
+        user = request.user
+        points_account, _ = UserPoints.objects.get_or_create(user=user)
+
+        return JsonResponse({
+            'success': True,
+            'current_points': points_account.current_points,
+            'total_earned': points_account.total_earned,
+            'total_spent': points_account.total_spent
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': str(e)
+        })
+
 
 

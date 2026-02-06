@@ -3,7 +3,10 @@ from django.contrib.admin import AdminSite
 from django.shortcuts import redirect
 from django.urls import path
 from django.utils.translation import gettext_lazy as _
-from .models import Category, Item, ReviewDay
+from .models import (
+    Category, Item, ReviewDay,
+    UserPoints, PointHistory, UserPointsConfig, PointRedemption, UserStreak
+)
 from .forms import CategoryAdminForm, ItemAdminForm, ReviewDayAdminForm
 from django.core.exceptions import ValidationError
 from django.contrib import messages
@@ -253,4 +256,129 @@ class ReviewDayAdmin(BaseAdmin):
 admin.site.register(Category, CategoryAdmin)
 admin.site.register(Item, ItemAdmin)
 admin.site.register(ReviewDay, ReviewDayAdmin)
+
+
+# ==================== 积分系统 Admin ====================
+
+class UserPointsAdmin(BaseAdmin):
+    """用户积分账户管理"""
+    list_display = ('user', 'current_points', 'total_earned', 'total_spent', 'last_updated')
+    list_filter = ('last_updated',)
+    search_fields = ('user__username', 'user__email')
+    readonly_fields = ('last_updated',)
+
+    def has_add_permission(self, request):
+        # 不允许手动添加，系统自动创建
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        # 不允许删除积分账户
+        return False
+
+
+class PointHistoryAdmin(BaseAdmin):
+    """积分历史记录管理"""
+    list_display = ('user', 'change_type', 'points', 'reason', 'balance_after', 'created_at')
+    list_filter = ('change_type', 'created_at')
+    search_fields = ('user__username', 'reason', 'reference_id')
+    readonly_fields = ('created_at',)
+
+    def has_add_permission(self, request):
+        # 不允许手动添加历史记录
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        # 历史记录不可修改
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        # 历史记录不可删除
+        return False
+
+
+class UserPointsConfigAdmin(BaseAdmin):
+    """用户积分配置管理"""
+    list_display = ('user', 'minutes_per_point', 'redemption_step',
+                    'daily_checkin_enabled', 'streak_reward_enabled', 'updated_at')
+    list_filter = ('daily_checkin_enabled', 'streak_reward_enabled', 'updated_at')
+    search_fields = ('user__username',)
+    readonly_fields = ('created_at', 'updated_at')
+
+    fieldsets = (
+        ('基本信息', {
+            'fields': ('user',)
+        }),
+        ('兑换规则', {
+            'fields': ('minutes_per_point', 'redemption_step',
+                      'min_redemption_minutes', 'max_redemption_minutes')
+        }),
+        ('签到奖励', {
+            'fields': ('daily_checkin_enabled', 'daily_checkin_points')
+        }),
+        ('连续学习奖励', {
+            'fields': ('streak_reward_enabled', 'streak_reward_points', 'streak_reward_days')
+        }),
+        ('时间信息', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+
+class PointRedemptionAdmin(BaseAdmin):
+    """兑换记录管理"""
+    list_display = ('user', 'points_spent', 'game_minutes', 'exchange_rate',
+                    'status', 'created_at')
+    list_filter = ('status', 'created_at')
+    search_fields = ('user__username', 'notes')
+    readonly_fields = ('created_at',)
+
+    def has_add_permission(self, request):
+        # 不允许手动添加兑换记录
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        # 已完成的兑换记录不可修改
+        if obj and obj.status == 'COMPLETED':
+            return False
+        return super().has_change_permission(request, obj)
+
+
+class UserStreakAdmin(BaseAdmin):
+    """用户连续学习记录管理"""
+    list_display = ('user', 'current_streak', 'longest_streak',
+                    'current_checkin_streak', 'longest_checkin_streak',
+                    'last_study_date', 'last_checkin_date', 'updated_at')
+    list_filter = ('updated_at',)
+    search_fields = ('user__username',)
+    readonly_fields = ('updated_at',)
+
+    fieldsets = (
+        ('连续学习', {
+            'fields': ('current_streak', 'longest_streak', 'last_study_date')
+        }),
+        ('连续签到', {
+            'fields': ('current_checkin_streak', 'longest_checkin_streak', 'last_checkin_date')
+        }),
+        ('奖励记录', {
+            'fields': ('last_streak_reward_date',)
+        }),
+        ('时间信息', {
+            'fields': ('updated_at',),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def has_add_permission(self, request):
+        # 不允许手动添加，系统自动创建
+        return False
+
+
+# 注册积分系统模型
+admin.site.register(UserPoints, UserPointsAdmin)
+admin.site.register(PointHistory, PointHistoryAdmin)
+admin.site.register(UserPointsConfig, UserPointsConfigAdmin)
+admin.site.register(PointRedemption, PointRedemptionAdmin)
+admin.site.register(UserStreak, UserStreakAdmin)
+
 

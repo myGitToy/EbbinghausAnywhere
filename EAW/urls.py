@@ -57,4 +57,12 @@ urlpatterns = [
     path('deepseek/query/', views.deepseek_query_view, name='deepseek-query'),
     path('deepseek/save/', views.deepseek_save_view, name='deepseek-save'),
     path('api/check-deepseek-keys/', views.check_deepseek_keys_view, name='check-deepseek-keys'),
+
+    # 积分系统路由
+    path('points/market/', views.points_market_view, name='points-market'),
+    path('points/config/', views.points_config_view, name='points-config'),
+    path('points/history/', views.points_history_view, name='points-history'),
+    path('points/redeem/', views.redeem_game_time_view, name='points-redeem'),
+    path('points/checkin/', views.daily_checkin_view, name='points-checkin'),
+    path('api/points/balance/', views.get_points_balance_api, name='api-points-balance'),
 ]

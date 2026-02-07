@@ -65,4 +65,15 @@ urlpatterns = [
     path('points/redeem/', views.redeem_game_time_view, name='points-redeem'),
     path('points/checkin/', views.daily_checkin_view, name='points-checkin'),
     path('api/points/balance/', views.get_points_balance_api, name='api-points-balance'),
+
+    # 分类管理路由
+    path('api/categories/', views.category_list, name='category-list'),
+    path('api/category/create/', views.category_create, name='category-create'),
+    path('api/category/<int:category_id>/update/', views.category_update, name='category-update'),
+    path('api/category/<int:category_id>/delete/', views.category_delete, name='category-delete'),
+    path('api/last-item-category/', views.get_last_item_category_view, name='get-last-item-category'),
+
+    # 批量操作路由
+    path('api/batch/delete/', views.batch_delete_items, name='batch-delete'),
+    path('api/batch/move/', views.batch_move_items, name='batch-move'),
 ]

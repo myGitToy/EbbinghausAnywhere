@@ -7,18 +7,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" href="{% static 'img/banner-callout.jpg' %}" />
     {% include "includes/styles.html" %}
+    {% block extra_css %}{% endblock %}
 </head>
 <body id="page-top" class="d-flex flex-column min-vh-100">
     <main class="flex-grow-1" style="background-color: #f8f9fa;">
-    <!-- 页面主要内容 -->    
+    <!-- 页面主要内容 -->
     <!-- Include navbar -->
-    {% include "includes/navbar.html" %}   
+    {% include "includes/navbar.html" %}
     {% block content %}
     {% endblock %}
     </main>
-    {% include "includes/footer.html" %}   
+    {% include "includes/footer.html" %}
 </body>
 
     <!-- Include scripts -->
-    {% include "includes/scripts.html" %}   
+    {% include "includes/scripts.html" %}
+    {% block extra_js %}{% endblock %}
 </html>

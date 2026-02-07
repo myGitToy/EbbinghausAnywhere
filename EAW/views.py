@@ -1787,23 +1787,33 @@ def deepseek_save_view(request):
             data = json.loads(request.body)
             word = data.get('word', '').strip()
             query_data = data.get('data', {})
-            
+            category_id = data.get('category_id')
+
             if not word:
                 return JsonResponse({'success': False, 'error': '单词不能为空'})
-            
-            # 获取默认分类"单词"
-            category = Category.objects.filter(
-                user=request.user, 
-                name='单词'
-            ).first()
-            
-            # 如果没有找到"单词"分类，创建或使用第一个分类
+
+            # 获取分类：优先使用用户指定的分类
+            category = None
+            if category_id:
+                try:
+                    category = Category.objects.get(id=category_id, user=request.user)
+                except Category.DoesNotExist:
+                    return JsonResponse({'success': False, 'error': '指定的分类不存在'})
+
+            # 如果没有指定分类，获取默认分类"单词"（向后兼容）
             if not category:
-                category, _ = Category.objects.get_or_create(
+                category = Category.objects.filter(
                     user=request.user,
-                    name='单词',
-                    defaults={'is_default': True, 'sort_order': 0}
-                )
+                    name='单词'
+                ).first()
+
+                # 如果没有找到"单词"分类，创建或使用第一个分类
+                if not category:
+                    category, _ = Category.objects.get_or_create(
+                        user=request.user,
+                        name='单词',
+                        defaults={'is_default': True, 'sort_order': 0}
+                    )
             
             # 构建内容
             content_parts = []
@@ -1856,6 +1866,30 @@ def deepseek_save_view(request):
             return JsonResponse({'success': False, 'error': str(e)})
     
     return JsonResponse({'success': False, 'error': '仅支持 POST 请求'})
+
+
+@login_required
+def get_last_item_category_view(request):
+    """获取用户最后保存的词汇的分类（用于设置默认分类）"""
+    if request.method == 'GET':
+        try:
+            # 获取用户最后保存的词汇
+            last_item = Item.objects.filter(user=request.user).order_by('-inputDate').first()
+
+            if last_item and last_item.category:
+                return JsonResponse({
+                    'success': True,
+                    'category_id': last_item.category.id,
+                    'category_name': last_item.category.name
+                })
+            else:
+                return JsonResponse({'success': False, 'message': 'No items found'})
+
+        except Exception as e:
+            logger.error(f"Error getting last item category: {e}")
+            return JsonResponse({'success': False, 'error': str(e)})
+
+    return JsonResponse({'success': False, 'error': '仅支持 GET 请求'})
 
 
 def check_deepseek_keys_view(request):

@@ -71,6 +71,7 @@ urlpatterns = [
     path('api/category/create/', views.category_create, name='category-create'),
     path('api/category/<int:category_id>/update/', views.category_update, name='category-update'),
     path('api/category/<int:category_id>/delete/', views.category_delete, name='category-delete'),
+    path('api/last-item-category/', views.get_last_item_category_view, name='get-last-item-category'),
 
     # 批量操作路由
     path('api/batch/delete/', views.batch_delete_items, name='batch-delete'),

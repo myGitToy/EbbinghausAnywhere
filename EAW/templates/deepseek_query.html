@@ -89,6 +89,26 @@
                             </div>
                         </div>
 
+                        <!-- 分类选择区域 -->
+                        <div class="card border-info mb-3">
+                            <div class="card-body">
+                                <label for="category-select" class="form-label">
+                                    <i class="fa fa-folder"></i> 选择分类：
+                                </label>
+                                <div class="input-group">
+                                    <select class="form-select" id="category-select">
+                                        <option value="" disabled selected>正在加载分类...</option>
+                                    </select>
+                                    <button class="btn btn-outline-primary" type="button" id="create-category-btn" title="创建新分类">
+                                        <i class="fa fa-plus"></i> 新建
+                                    </button>
+                                </div>
+                                <small class="form-text text-muted">
+                                    <i class="fa fa-info-circle"></i> 选择要保存到的分类，系统会记住您的选择
+                                </small>
+                            </div>
+                        </div>
+
                         <!-- 单词信息卡片 -->
                         <div class="card border-primary mb-3">
                             <div class="card-header bg-primary text-white">
@@ -168,9 +188,233 @@
     </div>
 </div>
 
+<!-- 创建新分类模态框 -->
+<div class="modal fade" id="createCategoryModal" tabindex="-1" aria-labelledby="createCategoryModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createCategoryModalLabel">
+                    <i class="fa fa-folder-plus"></i> 创建新分类
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createCategoryForm">
+                    <div class="mb-3">
+                        <label for="new-category-name" class="form-label">分类名称</label>
+                        <input type="text" class="form-control" id="new-category-name" placeholder="例如：5年级上、四级词汇">
+                        <div class="form-text">输入新分类的名称</div>
+                    </div>
+                    <div class="alert alert-warning d-none" id="category-error">
+                        <i class="fa fa-exclamation-triangle"></i>
+                        <span></span>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="confirm-create-category">
+                    <i class="fa fa-check"></i> 创建
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 let currentWord = '';
 let currentData = null;
+let categories = [];
+let lastSelectedCategory = null;
+
+// ==================== 分类管理功能 ====================
+
+// 获取上一次保存的分类ID
+function getLastSelectedCategory() {
+    const saved = localStorage.getItem('deepseek_last_category');
+    return saved ? parseInt(saved) : null;
+}
+
+// 保存选择的分类ID
+function saveLastSelectedCategory(categoryId) {
+    localStorage.setItem('deepseek_last_category', categoryId);
+}
+
+// 加载所有分类
+function loadCategories() {
+    fetch("{% url 'category-list' %}")
+        .then(response => response.json())
+        .then(data => {
+            categories = data.categories;
+            populateCategorySelect();
+            selectDefaultCategory();
+        })
+        .catch(error => {
+            console.error('Error loading categories:', error);
+            const categorySelect = document.getElementById('category-select');
+            categorySelect.innerHTML = '<option value="" disabled>加载分类失败</option>';
+        });
+}
+
+// 填充分类下拉框
+function populateCategorySelect() {
+    const categorySelect = document.getElementById('category-select');
+
+    if (categories.length === 0) {
+        categorySelect.innerHTML = '<option value="" disabled>暂无分类，请先创建</option>';
+        return;
+    }
+
+    let html = '<option value="" disabled>选择要保存的分类</option>';
+    categories.forEach(cat => {
+        const selected = lastSelectedCategory === cat.id ? ' selected' : '';
+        html += `<option value="${cat.id}"${selected}>${cat.name} (${cat.item_count})</option>`;
+    });
+
+    html += '<option value="new">+ 创建新分类</option>';
+    categorySelect.innerHTML = html;
+}
+
+// 选择默认分类
+function selectDefaultCategory() {
+    const categorySelect = document.getElementById('category-select');
+
+    // 1. 优先使用上次保存的分类
+    const lastId = getLastSelectedCategory();
+    if (lastId && categories.find(c => c.id === lastId)) {
+        categorySelect.value = lastId;
+        return;
+    }
+
+    // 2. 获取最后一条词汇的分类
+    fetch('/api/last-item-category/')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.category_id) {
+                categorySelect.value = data.category_id;
+            }
+        })
+        .catch(error => {
+            // 新用户或API端点不存在，保持默认选择
+            console.log('No last item category found');
+        });
+}
+
+// 监听分类选择变化
+document.addEventListener('change', function(e) {
+    if (e.target && e.target.id === 'category-select') {
+        const selectedValue = e.target.value;
+
+        if (selectedValue === 'new') {
+            // 显示创建新分类模态框
+            const modal = new bootstrap.Modal(document.getElementById('createCategoryModal'));
+            modal.show();
+        } else if (selectedValue) {
+            // 保存用户选择的分类
+            saveLastSelectedCategory(parseInt(selectedValue));
+        }
+    }
+});
+
+// 点击"新建"按钮
+const createCategoryBtn = document.getElementById('create-category-btn');
+if (createCategoryBtn) {
+    createCategoryBtn.addEventListener('click', function() {
+        const modal = new bootstrap.Modal(document.getElementById('createCategoryModal'));
+        modal.show();
+    });
+}
+
+// 创建新分类
+const confirmCreateBtn = document.getElementById('confirm-create-category');
+if (confirmCreateBtn) {
+    confirmCreateBtn.addEventListener('click', function() {
+        const nameInput = document.getElementById('new-category-name');
+        const name = nameInput.value.trim();
+        const errorDiv = document.getElementById('category-error');
+
+        // 重置错误
+        errorDiv.classList.add('d-none');
+
+        if (!name) {
+            errorDiv.classList.remove('d-none');
+            errorDiv.querySelector('span').textContent = '请输入分类名称';
+            nameInput.focus();
+            return;
+        }
+
+        // 禁用按钮
+        this.disabled = true;
+        this.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> 创建中...';
+
+        fetch('/api/category/create/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ name: name })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // 关闭模态框
+                const modalEl = document.getElementById('createCategoryModal');
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                modal.hide();
+
+                // 重新加载分类
+                loadCategories();
+
+                // 自动选择新创建的分类
+                saveLastSelectedCategory(data.category.id);
+
+                // 显示成功消息
+                const alertDiv = document.createElement('div');
+                alertDiv.className = 'alert alert-success alert-dismissible fade show';
+                alertDiv.innerHTML = `
+                    <i class="fa fa-check-circle"></i> 分类"${name}"创建成功！
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                `;
+
+                // 插入到分类选择区域之前
+                const categorySection = document.querySelector('#result-container .card.border-info');
+                categorySection.before(alertDiv);
+
+                // 3秒后自动消失
+                setTimeout(() => {
+                    alertDiv.remove();
+                }, 3000);
+
+                // 清空输入框
+                nameInput.value = '';
+
+            } else {
+                errorDiv.classList.remove('d-none');
+                errorDiv.querySelector('span').textContent = '创建失败: ' + (data.error || '未知错误');
+                this.disabled = false;
+                this.innerHTML = '<i class="fa fa-check"></i> 创建';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            errorDiv.classList.remove('d-none');
+            errorDiv.querySelector('span').textContent = '创建失败，请重试';
+            this.disabled = false;
+            this.innerHTML = '<i class="fa fa-check"></i> 创建';
+        });
+    });
+}
+
+// 模态框关闭时清空错误和输入
+document.getElementById('createCategoryModal').addEventListener('hidden.bs.modal', function() {
+    const errorDiv = document.getElementById('category-error');
+    errorDiv.classList.add('d-none');
+    document.getElementById('new-category-name').value = '';
+    const confirmBtn = document.getElementById('confirm-create-category');
+    confirmBtn.disabled = false;
+    confirmBtn.innerHTML = '<i class="fa fa-check"></i> 创建';
+});
 
 // TTS 偏好管理函数
 function getTTSPreference() {
@@ -297,6 +541,9 @@ document.addEventListener('DOMContentLoaded', function() {
             updateTTSMethodIcons();
         }
     });
+
+    // 初始化分类管理
+    loadCategories();
 
     const statusCheck = document.getElementById('api-status-check');
     statusCheck.classList.remove('d-none');
@@ -503,15 +750,26 @@ document.getElementById('save-btn').addEventListener('click', function() {
         alert('没有可保存的数据');
         return;
     }
-    
+
+    // 获取用户选择的分类
+    const categorySelect = document.getElementById('category-select');
+    const selectedCategoryId = categorySelect.value;
+
+    // 验证是否选择了分类
+    if (!selectedCategoryId || selectedCategoryId === 'new' || selectedCategoryId === '') {
+        alert('请选择或创建一个分类后再保存');
+        categorySelect.focus();
+        return;
+    }
+
     if (!confirm(`确定要将 "${currentWord}" 保存到单词本吗？`)) {
         return;
     }
-    
+
     const btn = this;
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> 保存中...';
-    
+
     fetch("{% url 'deepseek-save' %}", {
         method: 'POST',
         headers: {
@@ -520,12 +778,16 @@ document.getElementById('save-btn').addEventListener('click', function() {
         },
         body: JSON.stringify({
             word: currentWord,
-            data: currentData
+            data: currentData,
+            category_id: selectedCategoryId
         })
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
+            // 保存用户选择的分类到 localStorage
+            saveLastSelectedCategory(selectedCategoryId);
+
             alert('保存成功！');
             btn.innerHTML = '<i class="fa fa-check"></i> 已保存';
             setTimeout(() => {

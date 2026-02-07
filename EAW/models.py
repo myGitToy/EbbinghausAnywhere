@@ -494,6 +494,9 @@ class UserStreak(models.Model):
             elif delta.days == 1:
                 # 连续学习，增加计数
                 self.current_streak += 1
+                # 更新最长连续学习天数
+                if self.current_streak > self.longest_streak:
+                    self.longest_streak = self.current_streak
             else:
                 # 中断了，重新开始
                 if self.current_streak > self.longest_streak:
@@ -502,6 +505,9 @@ class UserStreak(models.Model):
         else:
             # 第一次学习
             self.current_streak = 1
+            # 第一次学习也要更新最长记录
+            if self.current_streak > self.longest_streak:
+                self.longest_streak = self.current_streak
 
         self.last_study_date = study_date
         self.save()
@@ -537,13 +543,15 @@ class UserStreak(models.Model):
 
     def check_streak_reward(self, config):
         """
-        检查是否达到连续学习奖励条件
+        检查是否达到连续学习奖励条件，并自动将current_streak推进到奖励天
         :param config: UserPointsConfig对象
         :return: 应该奖励的积分数，0表示不奖励
         """
         if not config.streak_reward_enabled:
             return 0
 
+        # 检查是否即将达到或已经达到奖励天数
+        # 如果current_streak已经达到奖励天数的倍数，给予奖励
         if self.current_streak > 0 and self.current_streak % config.streak_reward_days == 0:
             # 检查今天是否已经给过奖励
             from django.utils import timezone
@@ -562,6 +570,24 @@ class UserStreak(models.Model):
 
             # 给予奖励
             self.last_streak_reward_date = today
+            self.save()
+            return config.streak_reward_points
+
+        # 如果current_streak = streak_reward_days - 1，说明即将到达奖励天数
+        # 自动推进到奖励天数并给予奖励
+        if self.current_streak == config.streak_reward_days - 1:
+            from django.utils import timezone
+            today = timezone.now().date()
+
+            # 推进到奖励天数
+            self.current_streak = config.streak_reward_days
+            self.last_study_date = today
+            self.last_streak_reward_date = today
+
+            # 更新最长连续学习天数
+            if self.current_streak > self.longest_streak:
+                self.longest_streak = self.current_streak
+
             self.save()
             return config.streak_reward_points
 

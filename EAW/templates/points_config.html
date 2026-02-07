@@ -1,0 +1,236 @@
+{% extends "base_generic.html" %}
+{% load static %}
+
+{% block title %}
+<title>积分配置 - Ebbinghaus Anywhere</title>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0"><i class="fa fa-cog"></i> 积分系统配置</h3>
+                </div>
+                <div class="card-body">
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    <!-- 当前积分状态 -->
+                    <div class="alert alert-info">
+                        <div class="row text-center">
+                            <div class="col-4">
+                                <h6>当前积分</h6>
+                                <h4>{{ points_account.current_points }}</h4>
+                            </div>
+                            <div class="col-4">
+                                <h6>连续学习</h6>
+                                <h4>{{ streak.current_streak }} 天</h4>
+                            </div>
+                            <div class="col-4">
+                                <h6>连续签到</h6>
+                                <h4>{{ streak.current_checkin_streak }} 天</h4>
+                            </div>
+                        </div>
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+
+                        <!-- 兑换规则配置 -->
+                        <h5 class="border-bottom pb-2 mb-3">
+                            <i class="fa fa-exchange-alt"></i> 兑换规则
+                        </h5>
+
+                        <div class="mb-3">
+                            <label for="minutes_per_point" class="form-label">兑换汇率</label>
+                            <div class="input-group">
+                                <input type="number"
+                                       class="form-control"
+                                       id="minutes_per_point"
+                                       name="minutes_per_point"
+                                       value="{{ config.minutes_per_point }}"
+                                       step="0.1"
+                                       min="0.1"
+                                       required>
+                                <span class="input-group-text">分钟/积分</span>
+                            </div>
+                            <div class="form-text">
+                                1积分可以兑换多少分钟的游戏时长（例如：1.0 表示1积分=1分钟）
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="redemption_step" class="form-label">加减步长</label>
+                                <input type="number"
+                                       class="form-control"
+                                       id="redemption_step"
+                                       name="redemption_step"
+                                       value="{{ config.redemption_step }}"
+                                       min="1"
+                                       required>
+                                <div class="form-text">积分商城加减按钮的每次变化量（分钟）</div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="min_redemption_minutes" class="form-label">最小兑换时长</label>
+                                <input type="number"
+                                       class="form-control"
+                                       id="min_redemption_minutes"
+                                       name="min_redemption_minutes"
+                                       value="{{ config.min_redemption_minutes }}"
+                                       min="1"
+                                       required>
+                                <div class="form-text">单次最少兑换多少分钟</div>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="max_redemption_minutes" class="form-label">最大兑换时长</label>
+                            <input type="number"
+                                   class="form-control"
+                                   id="max_redemption_minutes"
+                                   name="max_redemption_minutes"
+                                   value="{{ config.max_redemption_minutes }}"
+                                   min="1"
+                                   required>
+                            <div class="form-text">单次最多兑换多少分钟</div>
+                        </div>
+
+                        <!-- 签到奖励配置 -->
+                        <h5 class="border-bottom pb-2 mb-3">
+                            <i class="fa fa-calendar-check"></i> 签到奖励
+                        </h5>
+
+                        <div class="mb-3 form-check">
+                            <input type="checkbox"
+                                   class="form-check-input"
+                                   id="daily_checkin"
+                                   name="daily_checkin"
+                                   {% if config.daily_checkin_enabled %}checked{% endif %}>
+                            <label class="form-check-label" for="daily_checkin">
+                                启用每日签到奖励
+                            </label>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="daily_checkin_points" class="form-label">每日签到积分</label>
+                            <input type="number"
+                                   class="form-control"
+                                   id="daily_checkin_points"
+                                   name="daily_checkin_points"
+                                   value="{{ config.daily_checkin_points }}"
+                                   min="1"
+                                   required>
+                            <div class="form-text">每次签到获得的积分数量</div>
+                        </div>
+
+                        <!-- 连续学习奖励配置 -->
+                        <h5 class="border-bottom pb-2 mb-3">
+                            <i class="fa fa-fire"></i> 连续学习奖励
+                        </h5>
+
+                        <div class="mb-3 form-check">
+                            <input type="checkbox"
+                                   class="form-check-input"
+                                   id="streak_reward"
+                                   name="streak_reward"
+                                   {% if config.streak_reward_enabled %}checked{% endif %}>
+                            <label class="form-check-label" for="streak_reward">
+                                启用连续学习奖励
+                            </label>
+                            <div class="form-text">连续学习指定天数后自动获得额外积分</div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="streak_reward_days" class="form-label">奖励周期</label>
+                                <input type="number"
+                                       class="form-control"
+                                       id="streak_reward_days"
+                                       name="streak_reward_days"
+                                       value="{{ config.streak_reward_days }}"
+                                       min="2"
+                                       required>
+                                <div class="form-text">连续学习多少天触发奖励</div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="streak_reward_points" class="form-label">奖励积分</label>
+                                <input type="number"
+                                       class="form-control"
+                                       id="streak_reward_points"
+                                       name="streak_reward_points"
+                                       value="{{ config.streak_reward_points }}"
+                                       min="1"
+                                       required>
+                                <div class="form-text">达到条件时获得的额外积分</div>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-warning">
+                            <i class="fa fa-exclamation-triangle"></i>
+                            <strong>提示：</strong> 例如设置为7天/5积分，则每连续学习7天会自动获得5积分奖励
+                        </div>
+
+                        <!-- 按钮组 -->
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fa fa-save"></i> 保存配置
+                            </button>
+                            <a href="{% url 'points-market' %}" class="btn btn-secondary">
+                                <i class="fa fa-arrow-left"></i> 返回积分商城
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 验证最大值必须大于最小值
+    const form = document.querySelector('form');
+    const minInput = document.getElementById('min_redemption_minutes');
+    const maxInput = document.getElementById('max_redemption_minutes');
+    const stepInput = document.getElementById('redemption_step');
+
+    form.addEventListener('submit', function(e) {
+        const min = parseInt(minInput.value);
+        const max = parseInt(maxInput.value);
+        const step = parseInt(stepInput.value);
+
+        if (min >= max) {
+            e.preventDefault();
+            alert('最大兑换时长必须大于最小兑换时长');
+            return false;
+        }
+
+        if (step > (max - min)) {
+            e.preventDefault();
+            alert('加减步长不能大于兑换时长范围');
+            return false;
+        }
+    });
+
+    // 动态验证
+    maxInput.addEventListener('change', function() {
+        const min = parseInt(minInput.value);
+        const max = parseInt(this.value);
+        if (max <= min) {
+            this.classList.add('is-invalid');
+        } else {
+            this.classList.remove('is-invalid');
+        }
+    });
+});
+</script>
+{% endblock %}

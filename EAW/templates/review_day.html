@@ -304,6 +304,11 @@
         if (response.success) {
           updateRowStyle(row, action, response.mastery); // 更新整行样式和掌握程度
 
+          // 显示积分奖励提示
+          if (typeof response.points_earned !== 'undefined' && response.points_earned > 0) {
+            showPointsRewardToast(response.points_earned, response.current_points, response.current_streak);
+          }
+
           // 如果后端返回了不熟悉计数，则更新徽章（用于短暂显示）
           if (typeof response.unfamiliar_count !== 'undefined') {
             const ufCell = row.querySelector('td:nth-child(6)');
@@ -430,7 +435,59 @@
         alert('加载失败，请稍后重试');
       });
     }
-  
+
+    // 显示积分奖励提示
+    function showPointsRewardToast(pointsEarned, currentPoints, currentStreak) {
+      // 创建toast容器
+      const toastContainer = document.createElement('div');
+      toastContainer.className = 'position-fixed top-0 end-0 p-3';
+      toastContainer.style.zIndex = '9999';
+      toastContainer.id = 'points-reward-toast';
+
+      toastContainer.innerHTML = `
+        <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true">
+          <div class="toast-header bg-success text-white">
+            <i class="fa fa-star me-2"></i>
+            <strong class="me-auto">积分奖励</strong>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+          </div>
+          <div class="toast-body">
+            <div class="mb-2">
+              <i class="fa fa-check-circle text-success"></i>
+              <strong>恭喜！获得 ${pointsEarned} 积分</strong>
+            </div>
+            <div class="small text-muted">
+              当前积分：<strong>${currentPoints}</strong>
+              ${currentStreak !== undefined ? `<br>连续学习：<strong>${currentStreak}</strong> 天` : ''}
+            </div>
+            <div class="mt-2">
+              <a href="/points/market/" class="btn btn-sm btn-primary">
+                <i class="fa fa-shopping-cart"></i> 前往积分商城
+              </a>
+            </div>
+          </div>
+        </div>
+      `;
+
+      // 添加到页面
+      document.body.appendChild(toastContainer);
+
+      // 绑定关闭按钮事件
+      const closeBtn = toastContainer.querySelector('.btn-close');
+      if (closeBtn) {
+        closeBtn.addEventListener('click', function() {
+          toastContainer.remove();
+        });
+      }
+
+      // 5秒后自动消失
+      setTimeout(() => {
+        if (document.getElementById('points-reward-toast')) {
+          toastContainer.remove();
+        }
+      }, 5000);
+    }
+
     // 等 DOM 加载完成后绑定事件
     document.addEventListener('DOMContentLoaded', function () {
       document.querySelectorAll('.feedback-btn').forEach(button => {

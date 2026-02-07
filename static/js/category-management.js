@@ -43,14 +43,12 @@
             }
         })
             .then(response => {
-                console.log('Response status:', response.status);
                 if (!response.ok) {
                     throw new Error('Network response was not ok');
                 }
                 return response.json();
             })
             .then(data => {
-                console.log('Items loaded:', data);
                 renderItems(data.items);
                 updatePagination(data);
                 // 更新 URL
@@ -269,10 +267,7 @@
     // ==================== 新增分类功能 ====================
     function initAddCategory() {
         const saveBtn = document.getElementById('saveCategoryBtn');
-        if (!saveBtn) {
-            console.warn('saveCategoryBtn not found');
-            return;
-        }
+        if (!saveBtn) return;
 
         saveBtn.addEventListener('click', function() {
             const nameInput = document.getElementById('newCategoryName');
@@ -284,27 +279,19 @@
                 return;
             }
 
-            // 禁用按钮，防止重复提交
             saveBtn.disabled = true;
             saveBtn.textContent = '保存中...';
-
-            const csrfToken = getCsrfToken();
-            console.log('CSRF Token:', csrfToken ? 'found' : 'not found');
 
             fetch('/api/category/create/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': csrfToken
+                    'X-CSRFToken': getCsrfToken()
                 },
                 body: JSON.stringify({ name: name })
             })
-            .then(response => {
-                console.log('Response status:', response.status);
-                return response.json();
-            })
+            .then(response => response.json())
             .then(data => {
-                console.log('Response data:', data);
                 if (data.success) {
                     alert('分类创建成功');
                     location.reload();
@@ -325,25 +312,127 @@
         // 清空输入框（模态框打开时）
         const modal = document.getElementById('addCategoryModal');
         if (modal) {
-            // 尝试使用 Bootstrap 5 的事件
             modal.addEventListener('show.bs.modal', function() {
-                document.getElementById('newCategoryName').value = '';
+                const nameInput = document.getElementById('newCategoryName');
+                nameInput.value = '';
             });
         }
+    }
 
-        // 也监听点击事件来清空输入框（作为备用方案）
-        const addCategoryBtn = document.querySelector('.add-category-btn');
-        if (addCategoryBtn) {
-            addCategoryBtn.addEventListener('click', function() {
-                setTimeout(() => {
-                    const nameInput = document.getElementById('newCategoryName');
-                    if (nameInput) {
-                        nameInput.value = '';
-                        nameInput.focus();
-                    }
-                }, 100);
+    // ==================== 重命名分类功能 ====================
+    function initRenameCategory() {
+        const saveBtn = document.getElementById('saveRenameCategoryBtn');
+        if (!saveBtn) return;
+
+        saveBtn.addEventListener('click', function() {
+            const categoryId = document.getElementById('renameCategoryId').value;
+            const newName = document.getElementById('renameCategoryName').value.trim();
+
+            if (!newName) {
+                alert('请输入分类名称');
+                return;
+            }
+
+            saveBtn.disabled = true;
+            saveBtn.textContent = '保存中...';
+
+            fetch(`/api/category/${categoryId}/update/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: JSON.stringify({ name: newName })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('分类重命名成功');
+                    location.reload();
+                } else {
+                    alert('重命名失败: ' + (data.error || '未知错误'));
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = '保存';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('重命名失败，请重试');
+                saveBtn.disabled = false;
+                saveBtn.textContent = '保存';
             });
-        }
+        });
+
+        // 绑定编辑按钮点击事件
+        document.querySelectorAll('.btn-edit-category').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const categoryId = this.dataset.categoryId;
+                const categoryName = this.dataset.categoryName;
+
+                document.getElementById('renameCategoryId').value = categoryId;
+                document.getElementById('renameCategoryName').value = categoryName;
+
+                // 显示模态框
+                const modal = new bootstrap.Modal(document.getElementById('renameCategoryModal'));
+                modal.show();
+            });
+        });
+    }
+
+    // ==================== 删除分类功能 ====================
+    function initDeleteCategory() {
+        const confirmBtn = document.getElementById('confirmDeleteCategoryBtn');
+        if (!confirmBtn) return;
+
+        confirmBtn.addEventListener('click', function() {
+            const categoryId = document.getElementById('deleteCategoryId').value;
+
+            confirmBtn.disabled = true;
+            confirmBtn.textContent = '删除中...';
+
+            fetch(`/api/category/${categoryId}/delete/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const message = data.message || '分类删除成功';
+                    alert(message);
+                    location.reload();
+                } else {
+                    alert('删除失败: ' + (data.error || '未知错误'));
+                    confirmBtn.disabled = false;
+                    confirmBtn.textContent = '确认删除';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('删除失败，请重试');
+                confirmBtn.disabled = false;
+                confirmBtn.textContent = '确认删除';
+            });
+        });
+
+        // 绑定删除按钮点击事件
+        document.querySelectorAll('.btn-delete-category').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const categoryId = this.dataset.categoryId;
+                const categoryName = this.dataset.categoryName;
+
+                document.getElementById('deleteCategoryId').value = categoryId;
+                document.getElementById('deleteCategoryName').textContent = categoryName;
+
+                // 显示模态框
+                const modal = new bootstrap.Modal(document.getElementById('deleteCategoryModal'));
+                modal.show();
+            });
+        });
     }
 
     // ==================== 工具函数 ====================
@@ -388,6 +477,8 @@
         initBatchDelete();
         initBatchMove();
         initAddCategory();
+        initRenameCategory();
+        initDeleteCategory();
     }
 
     // DOM 加载完成后初始化

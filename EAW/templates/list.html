@@ -17,11 +17,20 @@
                                 全部单词
                             </button>
                             {% for stat in category_stats %}
-                                <button class="category-tab {% if selected_category == stat.category__id %}active{% endif %}"
-                                        data-category-id="{{ stat.category__id }}">
-                                    {{ stat.category__name }}
-                                    <span class="badge">{{ stat.count }}</span>
-                                </button>
+                                <div class="category-tab-wrapper {% if selected_category == stat.category__id %}active{% endif %}">
+                                    <button class="category-tab" data-category-id="{{ stat.category__id }}">
+                                        {{ stat.category__name }}
+                                        <span class="badge">{{ stat.count }}</span>
+                                    </button>
+                                    <div class="category-actions">
+                                        <button class="btn-edit-category" data-category-id="{{ stat.category__id }}" data-category-name="{{ stat.category__name }}" title="重命名">
+                                            <i class="bi bi-pencil-square"></i>
+                                        </button>
+                                        <button class="btn-delete-category" data-category-id="{{ stat.category__id }}" data-category-name="{{ stat.category__name }}" title="删除">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
                             {% endfor %}
                             <button class="category-tab add-category-btn" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
                                 + 新增分类
@@ -152,6 +161,56 @@
         </div>
     </div>
 </div>
+
+<!-- 重命名分类模态框 -->
+<div class="modal fade" id="renameCategoryModal" tabindex="-1" aria-labelledby="renameCategoryModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="renameCategoryModalLabel">重命名分类</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="renameCategoryForm">
+                    <div class="mb-3">
+                        <label for="renameCategoryName" class="form-label">分类名称</label>
+                        <input type="text" class="form-control" id="renameCategoryName" placeholder="输入新的分类名称">
+                        <input type="hidden" id="renameCategoryId">
+                        <div class="form-text">分类名称不能与现有分类重复</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="saveRenameCategoryBtn">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 删除分类确认模态框 -->
+<div class="modal fade" id="deleteCategoryModal" tabindex="-1" aria-labelledby="deleteCategoryModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteCategoryModalLabel">删除分类</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>确定要删除分类 <strong id="deleteCategoryName"></strong> 吗？</p>
+                <input type="hidden" id="deleteCategoryId">
+                <p class="text-danger">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <strong>警告：</strong>删除后无法恢复，该分类下的所有单词及背诵记录将被一起删除！
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteCategoryBtn">确认删除</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_css %}
@@ -229,6 +288,73 @@
     width: 18px;
     height: 18px;
     cursor: pointer;
+}
+
+/* 分类管理按钮样式 */
+.category-tab-wrapper {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 8px;
+    border-radius: 24px;
+    transition: background 0.3s;
+}
+
+.category-tab-wrapper:hover {
+    background: #f0f0f0;
+}
+
+.category-tab-wrapper.active .category-tab {
+    background: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+.category-actions {
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s, visibility 0.2s;
+}
+
+.category-tab-wrapper:hover .category-actions {
+    opacity: 1;
+    visibility: visible;
+}
+
+.category-actions button {
+    background: none;
+    border: none;
+    padding: 4px 6px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-edit-category {
+    color: #6c757d;
+}
+
+.btn-edit-category:hover {
+    background: #e9ecef;
+    color: #007bff;
+}
+
+.btn-delete-category {
+    color: #6c757d;
+}
+
+.btn-delete-category:hover {
+    background: #f8d7da;
+    color: #dc3545;
+}
+
+.category-actions button i {
+    font-size: 0.85rem;
 }
 </style>
 {% endblock %}

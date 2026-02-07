@@ -23,6 +23,8 @@ docker-compose up -d
 docker-compose exec web python manage.py migrate
 docker-compose exec web python manage.py collectstatic --noinput
 
+# 强制部署方案
+sudo docker compose up -d --build --force-recreate --remove-orphans
 
 # 获取SSL证书
 docker-compose run --rm certbot certonly --webroot \

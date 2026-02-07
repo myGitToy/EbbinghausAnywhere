@@ -9,7 +9,11 @@
       "Bash(py -3:*)",
       "Bash(/c/Users/GHUIQ/AppData/Local/Microsoft/WindowsApps/python manage.py makemigrations)",
       "Bash(docker:*)",
-      "Bash(where py python python3)"
+      "Bash(where py python python3)",
+      "Bash(.run_tests.bat)",
+      "Bash(cmd.exe:*)",
+      "Bash(.conda\\\\python.exe manage.py test EAW.tests.test_points_system --verbosity=2)",
+      "Bash(.conda/python.exe manage.py test EAW.tests.test_points_system --verbosity=2)"
     ]
   }
 }

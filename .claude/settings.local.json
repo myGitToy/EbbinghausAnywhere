@@ -23,7 +23,8 @@
       "Bash(conda info:*)",
       "Bash(.conda/python.exe:*)",
       "Bash(curl:*)",
-      "Bash(./.conda/python.exe:*)"
+      "Bash(./.conda/python.exe:*)",
+      "Bash(git log:*)"
     ]
   }
 }

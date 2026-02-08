@@ -14,7 +14,16 @@
       "Bash(cmd.exe:*)",
       "Bash(.conda\\\\python.exe manage.py test EAW.tests.test_points_system --verbosity=2)",
       "Bash(.conda/python.exe manage.py test EAW.tests.test_points_system --verbosity=2)",
-      "Bash(git stash push:*)"
+      "Bash(git stash push:*)",
+      "Bash(python manage.py runserver:*)",
+      "Bash(timeout /t 3)",
+      "Bash(python manage.py check:*)",
+      "Bash(py:*)",
+      "Bash(where:*)",
+      "Bash(conda info:*)",
+      "Bash(.conda/python.exe:*)",
+      "Bash(curl:*)",
+      "Bash(./.conda/python.exe:*)"
     ]
   }
 }

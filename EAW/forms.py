@@ -76,8 +76,8 @@ class InputForm(forms.Form):
 
 class CustomUserCreationForm(UserCreationForm):
     email = forms.EmailField(
-        required=True, 
-        help_text="Please enter a valid email address."
+        required=False,
+        help_text="Email address (optional)."
     )
     first_name = forms.CharField(
         max_length=30, 
@@ -106,7 +106,8 @@ class CustomUserCreationForm(UserCreationForm):
 
     def clean_email(self):
         email = self.cleaned_data.get('email')
-        if User.objects.filter(email=email).exists():
+        # 只在用户填写了邮箱时才检查重复
+        if email and User.objects.filter(email=email).exists():
             raise ValidationError("This email is already registered, please use another one.")
         return email
 
@@ -125,9 +126,9 @@ class CustomUserCreationForm(UserCreationForm):
 
     def save(self, commit=True):
         user = super().save(commit=False)
-        user.email = self.cleaned_data['email']
-        user.first_name = self.cleaned_data.get('first_name')  # Save the nickname
-        user.last_name = self.cleaned_data.get('last_name')  # Save the surname
+        user.email = self.cleaned_data.get('email') or ''  # 处理None情况
+        user.first_name = self.cleaned_data.get('first_name', '')  # Save the nickname
+        user.last_name = self.cleaned_data.get('last_name', '')  # Save the surname
         if commit:
             user.save()
         return user

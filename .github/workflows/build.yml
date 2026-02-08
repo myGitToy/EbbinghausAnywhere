@@ -52,8 +52,8 @@ jobs:
           push: true
           # 多标签：commit sha 与 latest（仅在 main）
           tags: |
-            ${{ secrets.DOCKER_USERNAME }}/EAW:${{ github.sha }}
-            ${{ secrets.DOCKER_USERNAME }}/EAW:latest
+            ${{ secrets.DOCKER_USERNAME }}/ewa:${{ github.sha }}
+            ${{ secrets.DOCKER_USERNAME }}/ewa:latest
 
   build-for-prs:
     name: Build (PR / fork safe)

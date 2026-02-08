@@ -71,11 +71,11 @@ main {
         min-height: 300px;
     }
     h1 {
-        font-size: 4rem;
+        font-size: 2rem;
         margin-bottom: 0.5rem;
     }
     h3 {
-        font-size: 4rem;
+        font-size: 1.75rem;
     }
     .btn {
         padding: 0.4rem 0.8rem;
@@ -318,15 +318,19 @@ a.btn.rounded-circle:hover {
     padding-bottom: 0.5rem;
 }
 
-#services .row .col-6.col-md-3 {
-    flex: 0 0 18%; /* 调整为 18% 以便五项在一行显示 */
-    max-width: 18%;
+#services .row .col-6.col-md-4 {
+    flex: 0 0 32%;
+    max-width: 32%;
 }
 
 @media (max-width: 768px) {
-    #services .row .col-6.col-md-3 {
-        flex: 0 0 60%; /* 小屏时每个卡片更宽，便于触摸操作 */
-        max-width: 60%;
+    #services .row {
+        flex-wrap: wrap;
+    }
+
+    #services .row .col-6.col-md-4 {
+        flex: 0 0 50%;
+        max-width: 50%;
     }
 }
 

@@ -15,6 +15,13 @@
       "Bash(.conda\\\\python.exe manage.py test EAW.tests.test_points_system --verbosity=2)",
       "Bash(.conda/python.exe manage.py test EAW.tests.test_points_system --verbosity=2)",
       "Bash(git stash push:*)",
+      "Bash(python manage.py collectstatic:*)",
+      "Bash(conda info:*)",
+      "Bash(c:/Users/GHUIQ/repos/EbbinghausAnywhere/.conda/python.exe:*)",
+      "Bash(echo $PROFILE)",
+      "Bash(powershell -Command \"echo $PROFILE\")",
+      "Bash(powershell:*)",
+      "Bash(echo:*)"
       "Bash(python manage.py runserver:*)",
       "Bash(timeout /t 3)",
       "Bash(python manage.py check:*)",

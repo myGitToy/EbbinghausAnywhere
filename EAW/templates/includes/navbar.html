@@ -11,6 +11,9 @@
                 {% if user.is_authenticated %}
                 <!-- 用户已登录时的导航 -->
                 <li class="nav-item sidebar-nav-item">
+                    <a class="nav-link js-scroll-trigger" href="{% url 'deepseek-query' %}">Dict</a>
+                </li>
+                <li class="nav-item sidebar-nav-item">
                     <a class="nav-link js-scroll-trigger" href="{% url 'item-list' %}">All Items</a>
                 </li>
                 <li class="nav-item sidebar-nav-item">

@@ -145,7 +145,7 @@ class UserPointsConfigModelTest(TestCase):
         self.assertEqual(config.min_redemption_minutes, 1)
         self.assertEqual(config.max_redemption_minutes, 300)
         self.assertTrue(config.daily_checkin_enabled)
-        self.assertEqual(config.daily_checkin_points, 1)
+        self.assertEqual(config.daily_checkin_points, 5)
         self.assertTrue(config.streak_reward_enabled)
         self.assertEqual(config.streak_reward_points, 5)
         self.assertEqual(config.streak_reward_days, 7)
@@ -365,7 +365,7 @@ class PointsIntegrationTest(TestCase):
             reason="每日签到（连续1天）",
             reference_id=f"checkin_{self.today}"
         )
-        self.assertEqual(self.points.current_points, 2)
+        self.assertEqual(self.points.current_points, 6)
 
         # 3. 兑换游戏时长
         self.points.spend_points(
@@ -373,7 +373,7 @@ class PointsIntegrationTest(TestCase):
             reason=f"兑换{self.config.minutes_per_point * 2}分钟游戏时长",
             reference_id="redeem_test"
         )
-        self.assertEqual(self.points.current_points, 0)
+        self.assertEqual(self.points.current_points, 4)
 
         # 4. 验证历史记录
         history_count = PointHistory.objects.filter(user=self.user).count()

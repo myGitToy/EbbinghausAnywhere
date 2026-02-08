@@ -340,7 +340,7 @@ class UserPointsConfig(models.Model):
     # 连续签到奖励配置
     daily_checkin_enabled = models.BooleanField(default=True)
     daily_checkin_points = models.IntegerField(
-        default=1,
+        default=5,
         help_text="每天签到奖励积分"
     )
 

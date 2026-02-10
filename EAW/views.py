@@ -2086,6 +2086,8 @@ def daily_checkin_view(request):
             'points_earned': config.daily_checkin_points,
             'current_points': points_account.current_points
         })
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': f'签到失败：{str(e)}'})
 
 
 @login_required
@@ -2123,11 +2125,6 @@ def gobang_game(request):
         'points_spent': REQUIRED_POINTS,
         'remaining_points': points_account.current_points
     })
-
-
-    except Exception as e:
-        logger.error(f"Checkin error: {str(e)}")
-        return JsonResponse({'success': False, 'message': str(e)})
 
 
 @login_required

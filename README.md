@@ -106,4 +106,5 @@ Flatpickr
 Stylish Portfolio Bootstrap 模板  
 用于前端页面的布局设计。该模板是基于 Bootstrap 的免费模板，遵循 Creative Commons Attribution 3.0 License。  
 此外，本项目使用了以下付费服务：  
-百度翻译 API：提供文本翻译服务，具体信息请参阅 百度翻译 API 官网.
+百度翻译 API：提供文本翻译服务，具体信息请参阅 百度翻译 API 官网。
+DeepSeek LLM API：提供单词查询、音标、例句等服务。

@@ -6,7 +6,18 @@ docker build -t ewa:0.0.5 .
 # 2. 打包镜像（公有）
 docker tag ewa:0.0.5 ghuiqiao711/ewa:0.0.5
 
-# 3. 推送 Push
+# 3. 推送到 Docker Hub (docker.com)
+# 先登录 Docker Hub
+docker login
+# 或使用用户名密码登录
+# docker login -u ghuiqiao711
+
+# 推送镜像
+docker push ghuiqiao711/ewa:0.0.5
+
+# 如果需要推送到 latest 标签
+docker tag ghuiqiao711/ewa:0.0.5 ghuiqiao711/ewa:latest
+docker push ghuiqiao711/ewa:latest
 # 查看日志
 docker-compose logs -f web
 

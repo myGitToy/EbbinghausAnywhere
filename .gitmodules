@@ -1,0 +1,3 @@
+[submodule "external/gobang"]
+	path = external/gobang
+	url = https://github.com/lihongxun945/gobang.git

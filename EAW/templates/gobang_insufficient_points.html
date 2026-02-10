@@ -1,0 +1,75 @@
+{% extends "base_generic.html" %}
+{% load static %}
+
+{% block title %}
+<title>积分不足 - Ebbinghaus Anywhere</title>
+{% endblock %}
+
+{% block content %}
+{% include "includes/banner.html" %}
+
+<section class="py-5">
+    <div class="container">
+        <!-- 积分不足警告 -->
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card border-warning shadow mb-4">
+                    <div class="card-header bg-warning text-dark">
+                        <h4 class="mb-0">
+                            <i class="fa fa-exclamation-triangle"></i> 积分不足
+                        </h4>
+                    </div>
+                    <div class="card-body text-center">
+                        <div class="display-1 text-warning mb-3">
+                            <i class="fa fa-coins"></i>
+                        </div>
+                        <h5 class="card-title">无法访问五子棋游戏</h5>
+                        <p class="card-text">
+                            访问五子棋游戏需要 <strong>{{ required_points }}</strong> 积分
+                        </p>
+                        <p class="card-text">
+                            您当前积分：<strong>{{ current_points }}</strong>
+                        </p>
+                        <p class="card-text text-muted">
+                            还需要 <strong>{{ required_points|add:current_points|default:required_points }}</strong> 积分
+                        </p>
+                        <a href="{% url 'points_market' %}" class="btn btn-primary btn-lg">
+                            <i class="fa fa-shopping-cart"></i> 前往积分商城
+                        </a>
+                    </div>
+                </div>
+
+                <!-- 获取积分的方式 -->
+                <div class="card shadow">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fa fa-lightbulb"></i> 如何获取积分？
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item">
+                                <i class="fa fa-calendar-check text-success"></i>
+                                <strong>每日签到</strong>：每天签到可获得积分奖励
+                            </li>
+                            <li class="list-group-item">
+                                <i class="fa fa-book text-primary"></i>
+                                <strong>学习单词</strong>：创建和学习单词卡片可获得积分
+                            </li>
+                            <li class="list-group-item">
+                                <i class="fa fa-calendar text-info"></i>
+                                <strong>完成复习</strong>：按时完成单词复习可获得积分
+                            </li>
+                        </ul>
+                        <div class="text-center mt-3">
+                            <a href="{% url 'points_market' %}" class="btn btn-outline-primary">
+                                查看更多获取积分的方式
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

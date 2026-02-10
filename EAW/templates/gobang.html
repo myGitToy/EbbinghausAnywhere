@@ -1,0 +1,70 @@
+{% extends "base_generic.html" %}
+{% load static %}
+
+{% block title %}
+<title>五子棋 AI - Ebbinghaus Anywhere</title>
+{% endblock %}
+
+{% block content %}
+{% include "includes/banner.html" %}
+
+<section class="py-4">
+    <div class="container">
+        <!-- 标题和积分信息 -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card bg-info text-white shadow">
+                    <div class="card-body text-center">
+                        <h2 class="card-title">
+                            <i class="fa fa-gamepad"></i> 五子棋 AI
+                        </h2>
+                        <p class="mb-0">
+                            已扣除 <strong>{{ points_spent }}</strong> 积分，剩余积分：<strong>{{ remaining_points }}</strong>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 游戏区域 -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card shadow">
+                    <div class="card-body">
+                        <div class="ratio ratio-16x9">
+                            <iframe
+                                src="{% static 'gobang/index.html' %}"
+                                frameborder="0"
+                                allowfullscreen
+                                style="width: 100%; height: 80vh; border: none;">
+                            </iframe>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 游戏说明 -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fa fa-info-circle"></i> 游戏说明
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <ul class="mb-0">
+                            <li>本游戏使用 AI 对战，AI 采用 Alpha-Beta 剪枝算法</li>
+                            <li>难度越高，AI 思考时间越长，棋力也越强</li>
+                            <li>每次访问本页面需要消耗 {{ points_spent }} 积分</li>
+                            <li>如需调整难度，请在游戏界面设置</li>
+                            <li>提示：刷新页面会再次扣除积分，请谨慎操作</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

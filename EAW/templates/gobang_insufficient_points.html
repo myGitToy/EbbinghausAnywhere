@@ -33,7 +33,7 @@
                         <p class="card-text text-muted">
                             还需要 <strong>{{ required_points|add:current_points|default:required_points }}</strong> 积分
                         </p>
-                        <a href="{% url 'points_market' %}" class="btn btn-primary btn-lg">
+                        <a href="{% url 'points-market' %}" class="btn btn-primary btn-lg">
                             <i class="fa fa-shopping-cart"></i> 前往积分商城
                         </a>
                     </div>
@@ -62,7 +62,7 @@
                             </li>
                         </ul>
                         <div class="text-center mt-3">
-                            <a href="{% url 'points_market' %}" class="btn btn-outline-primary">
+                            <a href="{% url 'points-market' %}" class="btn btn-outline-primary">
                                 查看更多获取积分的方式
                             </a>
                         </div>

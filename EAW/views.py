@@ -2094,37 +2094,42 @@ def daily_checkin_view(request):
 def gobang_game(request):
     """
     五子棋游戏页面
-    访问时扣除积分，然后展示游戏
 
-    注意：每次访问 /gobang/ 都会扣除积分，包括页面刷新
-    后续可优化为时间窗口内只扣一次
+    测试期间：不扣除积分，直接展示游戏
     """
     user = request.user
     points_account = user.points_account
 
-    # 配置每次游戏需要的积分（默认 10 积分）
-    REQUIRED_POINTS = 10
-
-    # 检查积分是否足够
-    if points_account.current_points < REQUIRED_POINTS:
-        return render(request, 'gobang_insufficient_points.html', {
-            'required_points': REQUIRED_POINTS,
-            'current_points': points_account.current_points
-        })
-
-    # 使用事务扣除积分
-    with transaction.atomic():
-        points_account.spend_points(
-            points=REQUIRED_POINTS,
-            reason="五子棋游戏",
-            reference_id=f"gobang_{request.session.session_key}"
-        )
-
-    # 渲染游戏页面
+    # 【测试期间】取消积分扣除，直接渲染游戏页面
     return render(request, 'gobang.html', {
-        'points_spent': REQUIRED_POINTS,
+        'points_spent': 0,
         'remaining_points': points_account.current_points
     })
+
+    # ===== 以下积分扣除逻辑在测试期间已注释 =====
+    # # 配置每次游戏需要的积分（默认 10 积分）
+    # REQUIRED_POINTS = 10
+    #
+    # # 检查积分是否足够
+    # if points_account.current_points < REQUIRED_POINTS:
+    #     return render(request, 'gobang_insufficient_points.html', {
+    #         'required_points': REQUIRED_POINTS,
+    #         'current_points': points_account.current_points
+    #     })
+    #
+    # # 使用事务扣除积分
+    # with transaction.atomic():
+    #     points_account.spend_points(
+    #         points=REQUIRED_POINTS,
+    #         reason="五子棋游戏",
+    #         reference_id=f"gobang_{request.session.session_key}"
+    #     )
+    #
+    # # 渲染游戏页面
+    # return render(request, 'gobang.html', {
+    #     'points_spent': REQUIRED_POINTS,
+    #     'remaining_points': points_account.current_points
+    # })
 
 
 @login_required

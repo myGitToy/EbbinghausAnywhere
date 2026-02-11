@@ -8,6 +8,49 @@
 {% block content %}
 {% include "includes/banner.html" %}
 
+<script>
+// 监听来自 iframe 的积分更新消息
+window.addEventListener('message', function(event) {
+    // 验证消息来源
+    if (event.origin !== window.location.origin) {
+        return;
+    }
+
+    if (event.data && event.data.type === 'POINTS_UPDATED') {
+        console.log('[Points Update] Total spent:', event.data.total_spent, 'Remaining:', event.data.remainingPoints);
+
+        // 更新积分显示
+        const strongElements = document.querySelectorAll('.card-body strong');
+
+        if (strongElements && strongElements.length >= 2) {
+            // 第1个：累计消费
+            if (event.data.total_spent !== undefined) {
+                strongElements[0].textContent = event.data.total_spent;
+            }
+            // 第2个：剩余积分
+            if (event.data.remainingPoints !== undefined) {
+                strongElements[1].textContent = event.data.remainingPoints;
+            }
+        }
+
+        // 显示更新提示
+        const toast = document.createElement('div');
+        toast.className = 'alert alert-success alert-dismissible fade show position-fixed';
+        toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+        toast.innerHTML = `
+            <button type="button" class="btn-close" data-bs-dismiss="alert">&times;</button>
+            <strong>积分已更新！</strong><br>累计：${event.data.total_spent}<br>当前：${event.data.remainingPoints}
+        `;
+        document.body.appendChild(toast);
+
+        // 3秒后自动移除提示
+        setTimeout(function() {
+            toast.remove();
+        }, 3000);
+    }
+});
+</script>
+
 <section class="py-4">
     <div class="container">
         <!-- 标题和积分信息 -->
@@ -19,7 +62,7 @@
                             <i class="fa fa-gamepad"></i> 五子棋 AI
                         </h2>
                         <p class="mb-0">
-                            已扣除 <strong>{{ points_spent }}</strong> 积分，剩余积分：<strong>{{ remaining_points }}</strong>
+                            累计消费 <strong>{{ total_spent }}</strong> 积分，剩余积分：<strong>{{ remaining_points }}</strong>（每局 <strong>{{ points_per_game }}</strong> 积分）
                         </p>
                     </div>
                 </div>
@@ -57,7 +100,7 @@
                         <ul class="mb-0">
                             <li>本游戏使用 AI 对战，AI 采用 Alpha-Beta 剪枝算法</li>
                             <li>难度越高，AI 思考时间越长，棋力也越强</li>
-                            <li>每次访问本页面需要消耗 {{ points_spent }} 积分</li>
+                            <li>每次访问本页面需要消费 {{ points_spent }} 积分</li>
                             <li>如需调整难度，请在游戏界面设置</li>
                             <li>提示：刷新页面会再次扣除积分，请谨慎操作</li>
                         </ul>
@@ -67,4 +110,5 @@
         </div>
     </div>
 </section>
+
 {% endblock %}

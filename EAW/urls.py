@@ -68,6 +68,7 @@ urlpatterns = [
 
     # 五子棋游戏路由
     path('gobang/', views.gobang_game, name='gobang-game'),
+    path('api/gobang/start/', views.gobang_start_game_api, name='api-gobang-start'),
 
     # 分类管理路由
     path('api/categories/', views.category_list, name='category-list'),

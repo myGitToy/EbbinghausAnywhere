@@ -2094,17 +2094,56 @@ def daily_checkin_view(request):
 def gobang_game(request):
     """
     五子棋游戏页面
-
-    测试期间：不扣除积分，直接展示游戏
+    点击开始游戏时扣除5积分
     """
     user = request.user
-    points_account = user.points_account
+    from EAW.models import UserPoints
+    points_account, _ = UserPoints.objects.get_or_create(user=user)
 
-    # 【测试期间】取消积分扣除，直接渲染游戏页面
     return render(request, 'gobang.html', {
-        'points_spent': 0,
         'remaining_points': points_account.current_points
     })
+
+
+@login_required
+@require_http_methods(["POST"])
+def gobang_start_game_api(request):
+    """
+    五子棋开始游戏API - 扣除5积分
+    """
+    from EAW.models import UserPoints
+
+    try:
+        user = request.user
+        REQUIRED_POINTS = 5
+
+        # 获取积分账户
+        points_account, _ = UserPoints.objects.get_or_create(user=user)
+
+        # 检查积分是否足够
+        if points_account.current_points < REQUIRED_POINTS:
+            return JsonResponse({
+                'success': False,
+                'message': f'积分不足！开始游戏需要{REQUIRED_POINTS}积分，当前{points_account.current_points}积分'
+            })
+
+        # 使用事务扣除积分
+        with transaction.atomic():
+            points_account.spend_points(
+                points=REQUIRED_POINTS,
+                reason="五子棋游戏",
+                reference_id=f"gobang_{now().timestamp()}"
+            )
+
+        return JsonResponse({
+            'success': True,
+            'message': f'开始游戏成功！扣除{REQUIRED_POINTS}积分',
+            'remaining_points': points_account.current_points
+        })
+
+    except Exception as e:
+        logger.error(f"Gobang start game error: {str(e)}")
+        return JsonResponse({'success': False, 'message': f'操作失败：{str(e)}'})
 
     # ===== 以下积分扣除逻辑在测试期间已注释 =====
     # # 配置每次游戏需要的积分（默认 10 积分）

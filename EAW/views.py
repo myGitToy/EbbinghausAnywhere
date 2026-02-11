@@ -2100,8 +2100,18 @@ def gobang_game(request):
     from EAW.models import UserPoints
     points_account, _ = UserPoints.objects.get_or_create(user=user)
 
+    # 添加调试日志
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f'[GOBANG PAGE] User: {user.username}, Current: {points_account.current_points}, '
+                  f'Total Spent: {points_account.total_spent}, '
+                  f'Total Earned: {points_account.total_earned}')
+
     return render(request, 'gobang.html', {
-        'remaining_points': points_account.current_points
+        'remaining_points': points_account.current_points,
+        'total_spent': points_account.total_spent,  # 累计消费积分
+        'points_per_game': 5,  # 每次游戏消耗5积分
+        'debug_info': f'DB total_spent={points_account.total_spent}, current_points={points_account.current_points}'
     })
 
 
@@ -2127,6 +2137,9 @@ def gobang_start_game_api(request):
                 'message': f'积分不足！开始游戏需要{REQUIRED_POINTS}积分，当前{points_account.current_points}积分'
             })
 
+        # 保存扣除前的累计消费
+        old_total_spent = points_account.total_spent
+
         # 使用事务扣除积分
         with transaction.atomic():
             points_account.spend_points(
@@ -2135,10 +2148,15 @@ def gobang_start_game_api(request):
                 reference_id=f"gobang_{now().timestamp()}"
             )
 
+        # 重新获取更新后的数据
+        points_account.refresh_from_db()
+
         return JsonResponse({
             'success': True,
             'message': f'开始游戏成功！扣除{REQUIRED_POINTS}积分',
-            'remaining_points': points_account.current_points
+            'remaining_points': points_account.current_points,
+            'total_spent': points_account.total_spent,  # 更新后的累计消费
+            'points_per_game': REQUIRED_POINTS  # 每局消耗
         })
 
     except Exception as e:

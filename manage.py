@@ -19,4 +19,11 @@ def main():
 
 
 if __name__ == "__main__":
+    # 在 Windows 上设置控制台为 UTF-8 模式
+    if sys.platform == 'win32':
+        import locale
+        try:
+            locale.setlocale(locale.LC_ALL, 'UTF-8')
+        except:
+            pass  # 如果设置失败就忽略
     main()

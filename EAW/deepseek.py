@@ -7,9 +7,16 @@ DeepSeek API 客户端模块
 import json
 import re
 import environ
+import sys
+import io
 from pathlib import Path
 from openai import OpenAI
 from django.conf import settings
+
+# 修复 Windows 控制台编码问题
+if sys.platform == 'win32':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
 env = environ.Env(DEBUG=(bool, False))
 BASE_DIR = Path(__file__).resolve().parent.parent

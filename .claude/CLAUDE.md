@@ -125,3 +125,71 @@ A: 在 `.vscode/settings.json` 中设置：
 ### 激活项目本地 .conda 环境（PowerShell）
 
 在 PowerShell 中激活时，不能使用 `conda activate .conda`，需要使用完整路径：
+
+---
+
+## React 应用部署到 Django 静态目录
+
+### 项目结构
+
+- **React 源码**：`external/gobang/` - 使用 create-react-app 构建
+- **部署位置**：`static/gobang/` - Django 静态文件目录
+- **访问方式**：通过 iframe 嵌入 Django 模板
+
+### 常见问题：静态资源路径 404
+
+**问题**：React 应用构建后的 `index.html` 使用绝对路径（如 `/static/js/main.xxx.js`），导致在 Django 静态子目录下无法加载资源。
+
+**原因**：React 默认假设应用部署在根路径，但本项目部署在 `/static/gobang/` 子目录。
+
+**解决方案**：
+
+1. **在 `external/gobang/package.json` 中添加 `homepage` 字段**：
+
+```json
+{
+  "name": "gobang-v3",
+  "homepage": ".",
+  ...
+}
+```
+
+2. **重新构建应用**：
+
+```bash
+cd external/gobang
+npm run build
+```
+
+3. **复制到 Django 静态目录**：
+
+```bash
+cp -r build/* ../../static/gobang/
+```
+
+### 验证修复
+
+检查 `static/gobang/index.html` 中的资源引用：
+
+```html
+<!-- 错误：绝对路径 -->
+<script src="/static/js/main.xxx.js"></script>
+
+<!-- 正确：相对路径 -->
+<script src="./static/js/main.xxx.js"></script>
+```
+
+### 开发工作流
+
+修改 React 应用后的完整流程：
+
+1. 在 `external/gobang/` 中开发和测试
+2. 运行 `npm run build` 构建生产版本
+3. 复制 `build/*` 到 `static/gobang/`
+4. 刷新 Django 页面验证
+
+### 注意事项
+
+- `homepage: "."` 使构建输出使用相对路径，适用于子目录部署
+- 每次修改 React 代码后都需要重新构建和复制
+- 确保复制时覆盖旧文件（使用 `cp -r` 或删除后复制）

@@ -31,6 +31,14 @@ SECRET_KEY = env('SECRET_KEY')
 
 ALLOWED_HOSTS = ['*']
 
+# CORS 配置
+CORS_ALLOW_ALL_ORIGINS = True  # 允许所有来源（开发环境）
+CORS_ALLOW_CREDENTIALS = True  # 允许携带认证信息
+CSRF_TRUSTED_ORIGINS = [
+    "http://127.0.0.1:8000",
+    "http://localhost:8000",
+]
+
 
 # Application definition
 
@@ -41,12 +49,14 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "corsheaders",
     "EAW.apps.EawConfig",
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -65,6 +75,7 @@ TEMPLATES = [
             "context_processors": [
                 "django.template.context_processors.debug",
                 "django.template.context_processors.request",
+                "django.template.context_processors.csrf",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
             ],
@@ -152,13 +163,19 @@ LOGGING = {
             'class': 'logging.FileHandler',
             'filename': 'debug.log',
             'formatter': 'verbose',
+            'encoding': 'utf-8',  # 指定使用 UTF-8 编码
         },
     },
     'loggers': {
         'django': {
-            'handlers': ['file'],
+            'handlers': ['file'],  # 只使用文件日志
             'level': 'DEBUG',
-            'propagate': True,
+            'propagate': False,  # 不传播到控制台
+        },
+        'django.db.backends': {
+            'handlers': ['file'],  # SQL 查询只记录到文件
+            'level': 'DEBUG',
+            'propagate': False,  # 不传播到父 logger
         },
     },
 }
@@ -171,3 +188,6 @@ try:
     from .local_settings import *
 except ImportError:
     pass
+
+# 开发方便：允许所有源进行跨域请求（生产环境请改为精确白名单）
+CORS_ALLOW_ALL_ORIGINS = True

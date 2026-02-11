@@ -66,6 +66,10 @@ urlpatterns = [
     path('points/checkin/', views.daily_checkin_view, name='points-checkin'),
     path('api/points/balance/', views.get_points_balance_api, name='api-points-balance'),
 
+    # 五子棋游戏路由
+    path('gobang/', views.gobang_game, name='gobang-game'),
+    path('api/gobang/start/', views.gobang_start_game_api, name='api-gobang-start'),
+
     # 分类管理路由
     path('api/categories/', views.category_list, name='category-list'),
     path('api/category/create/', views.category_create, name='category-create'),

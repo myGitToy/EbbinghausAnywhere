@@ -1,6 +1,7 @@
 django
 django-environ
 django-dirtyfields
+django-cors-headers
 requests
 openpyxl
 markdown

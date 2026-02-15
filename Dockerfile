@@ -54,8 +54,10 @@ COPY . .
 # 创建静态文件目录
 RUN mkdir -p staticfiles media
 
-# 收集静态文件
-RUN python manage.py collectstatic --noinput || true
+# 收集静态文件（设置临时的SECRET_KEY用于构建）
+ARG SECRET_KEY_BUILD
+ENV SECRET_KEY=${SECRET_KEY_BUILD:-django-insecure-change-this-in-production-key-for-build-only}
+RUN python manage.py collectstatic --noinput
 
 # 创建启动脚本
 RUN echo '#!/bin/bash\n\

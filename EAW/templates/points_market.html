@@ -35,7 +35,11 @@
                         <h5 class="card-title">
                             <i class="fa fa-calendar-check"></i> 每日签到
                         </h5>
-                        <p class="card-text">签到可获得 {{ config.daily_checkin_points }} 积分</p>
+                        <p class="card-text mb-1">签到可获得 {{ config.daily_checkin_points }} 积分</p>
+                        <p class="card-text small mb-2">
+                            <i class="fa fa-gift text-danger"></i> 连续7天额外奖励20积分！
+                        </p>
+                        <p class="card-text small text-muted">当前连续：{{ streak.current_checkin_streak }} 天</p>
                         <button class="btn btn-dark btn-lg" id="checkin-btn">
                             立即签到 (+{{ config.daily_checkin_points }}积分)
                         </button>

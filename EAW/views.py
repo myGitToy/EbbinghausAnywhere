@@ -2044,7 +2044,7 @@ def redeem_game_time_view(request):
 @login_required
 @require_http_methods(["POST"])
 def daily_checkin_view(request):
-    """每日签到API"""
+    """每日签到API - 连续7天额外奖励20积分"""
     from EAW.models import UserPoints, UserPointsConfig, UserStreak, PointHistory
 
     try:
@@ -2071,7 +2071,7 @@ def daily_checkin_view(request):
         streak, _ = UserStreak.objects.get_or_create(user=user)
         streak.update_checkin_streak(today)
 
-        # 给予积分奖励
+        # 给予基础积分奖励
         points_account, _ = UserPoints.objects.get_or_create(user=user)
         points_account.add_points(
             points=config.daily_checkin_points,
@@ -2079,11 +2079,29 @@ def daily_checkin_view(request):
             reference_id=f"checkin_{today}"
         )
 
+        total_points_earned = config.daily_checkin_points
+        bonus_points = 0
+        message_parts = [f'签到成功！获得{config.daily_checkin_points}积分']
+
+        # 检查是否达到连续7天奖励（每7天奖励20积分）
+        if streak.current_checkin_streak % 7 == 0:
+            CONSECUTIVE_BONUS_POINTS = 20
+            bonus_points = CONSECUTIVE_BONUS_POINTS
+            points_account.add_points(
+                points=CONSECUTIVE_BONUS_POINTS,
+                reason=f"连续签到7天奖励",
+                reference_id=f"checkin_bonus_{today}"
+            )
+            total_points_earned += CONSECUTIVE_BONUS_POINTS
+            message_parts.append(f'连续{streak.current_checkin_streak}天额外奖励{CONSECUTIVE_BONUS_POINTS}积分！🎉')
+
         return JsonResponse({
             'success': True,
-            'message': f'签到成功！获得{config.daily_checkin_points}积分',
+            'message': '，'.join(message_parts),
             'checkin_streak': streak.current_checkin_streak,
-            'points_earned': config.daily_checkin_points,
+            'points_earned': total_points_earned,
+            'base_points': config.daily_checkin_points,
+            'bonus_points': bonus_points,
             'current_points': points_account.current_points
         })
     except Exception as e:

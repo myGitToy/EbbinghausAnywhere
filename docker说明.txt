@@ -37,6 +37,11 @@ docker-compose exec web python manage.py collectstatic --noinput
 # 强制部署方案
 sudo docker compose up -d --build --force-recreate --remove-orphans
 
+重新构建 Docker 镜像命令：
+docker-compose down
+docker-compose build --no-cache
+docker-compose up -d
+
 # 获取SSL证书
 docker-compose run --rm certbot certonly --webroot \
   --webroot-path=/var/www/certbot \

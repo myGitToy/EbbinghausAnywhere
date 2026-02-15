@@ -25,8 +25,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.1/howto/deployment/checklist/
 
 
-environ.Env.read_env( BASE_DIR / '.env')
+# 读取 .env 文件（如果存在）
+# 注意：优先从环境变量读取，Docker 会通过 env_file 注入环境变量
+environ.Env.read_env(BASE_DIR / '.env')
 
+# SECRET_KEY 必须通过环境变量设置（Docker 部署时由 docker-compose.yml 注入）
 SECRET_KEY = env('SECRET_KEY')
 
 ALLOWED_HOSTS = ['*']

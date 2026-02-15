@@ -48,7 +48,7 @@ COPY requirements.txt .
 RUN python -m pip install --upgrade pip && \
     python -m pip install --no-cache-dir -r requirements.txt gunicorn
 
-# 复制项目文件
+# 复制项目文件（排除 .env 以避免意外提交敏感信息）
 COPY . .
 
 # 创建静态文件目录

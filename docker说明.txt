@@ -42,6 +42,116 @@ docker-compose down
 docker-compose build --no-cache
 docker-compose up -d
 
+# 五子棋静态文件部署方案
+
+## 问题说明
+五子棋游戏使用 React 构建，静态文件部署在 `static/gobang/` 目录。
+Docker 部署时，静态文件需要通过 `collectstatic` 收集到 `staticfiles/` 目录。
+
+## 部署步骤
+
+### 1. 本地开发后部署
+```bash
+# 在 external/gobang/ 中修改 React 代码后
+cd external/gobang
+npm run build
+
+# 复制到 Django 静态目录
+cp -r build/* ../../static/gobang/
+
+# 提交代码
+git add static/gobang/
+git commit -m "更新五子棋静态文件"
+git push
+```
+
+### 2. 服务器上更新静态文件
+```bash
+# 拉取最新代码
+git pull
+
+# 重新收集静态文件（重要！）
+sudo docker-compose exec web python manage.py collectstatic --noinput --clear
+
+# 重启 nginx 容器以加载最新文件
+sudo docker-compose restart nginx
+
+# 检查静态文件是否正确部署
+ls -la staticfiles/gobang/
+ls -la staticfiles/gobang/static/js/
+ls -la staticfiles/gobang/static/css/
+```
+
+### 3. 完整重新部署（如果上述方法无效）
+```bash
+# 停止所有服务
+sudo docker-compose down
+
+# 重新构建镜像（不使用缓存）
+sudo docker-compose build --no-cache
+
+# 启动服务
+sudo docker-compose up -d
+
+# 在运行的容器中收集静态文件
+sudo docker-compose exec web python manage.py collectstatic --noinput --clear
+
+# 重启 nginx
+sudo docker-compose restart nginx
+```
+
+### 4. 验证部署
+```bash
+# 查看服务状态
+sudo docker-compose ps
+
+# 查看 web 日志
+sudo docker-compose logs -f web
+
+# 查看 nginx 日志
+sudo docker-compose logs nginx | tail -50
+```
+
+## 常见问题
+
+### 问题1：五子棋页面显示空白
+**原因**：静态文件未正确收集到 `staticfiles/` 目录
+**解决**：
+```bash
+sudo docker-compose exec web python manage.py collectstatic --noinput --clear
+sudo docker-compose restart nginx
+```
+
+### 问题2：静态文件 404
+**原因**：nginx 容器未加载最新的 staticfiles 目录
+**解决**：
+```bash
+sudo docker-compose restart nginx
+```
+
+### 问题3：JS/CSS 文件加载失败
+**检查**：
+1. 浏览器开发者工具（F12） -> Network 标签页
+2. 查看是否有红色的失败请求
+3. 确认文件路径是否正确（应为 `/static/gobang/static/js/xxx.js`）
+
+**解决**：
+```bash
+# 检查文件是否存在
+ls -la staticfiles/gobang/static/js/
+ls -la staticfiles/gobang/static/css/
+
+# 如不存在，重新收集
+sudo docker-compose exec web python manage.py collectstatic --noinput --clear
+```
+
+## 注意事项
+
+1. **每次修改 React 代码后**，都需要重新运行 `npm run build` 并 `collectstatic`
+2. **staticfiles/ 目录**由 docker-compose volume 挂载，需要在容器内执行 `collectstatic`
+3. **nginx 容器**读取的是宿主机的 `staticfiles/` 目录，重启 nginx 才能生效
+4. **不要直接修改 `staticfiles/` 目录**，它是由 `collectstatic` 自动生成的
+
 # 获取SSL证书
 docker-compose run --rm certbot certonly --webroot \
   --webroot-path=/var/www/certbot \

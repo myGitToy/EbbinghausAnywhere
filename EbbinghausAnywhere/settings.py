@@ -115,6 +115,13 @@ AUTH_PASSWORD_VALIDATORS = [
 
 MESSAGE_STORAGE = 'django.contrib.messages.storage.session.SessionStorage'
 
+# 安全设置 - 允许在 iframe 中加载（用于五子棋游戏）
+X_FRAME_OPTIONS = 'SAMEORIGIN'  # 允许同源页面在 iframe 中加载
+SECURE_SSL_REDIRECT = False  # 开发环境不强制 HTTPS
+SECURE_HSTS_SECONDS = 0  # 开发环境禁用 HSTS
+SESSION_COOKIE_SECURE = False  # 开发环境允许 HTTP
+CSRF_COOKIE_SECURE = False  # 开发环境允许 HTTP
+
 # Internationalization
 # https://docs.djangoproject.com/en/4.1/topics/i18n/
 

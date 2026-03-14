@@ -586,3 +586,105 @@ class UserStreak(models.Model):
             return config.streak_reward_points
 
         return 0
+
+
+# ==================== 词汇表系统模型 ====================
+
+class VocabularyBook(models.Model):
+    """词汇表元数据模型"""
+    name = models.CharField(
+        max_length=200,
+        help_text="词汇表名称，如'2025上海市中考词汇'"
+    )
+    description = models.TextField(
+        blank=True,
+        help_text="词汇表描述"
+    )
+    level = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="词汇等级，如'中考'、'高考'、'四级'"
+    )
+    source_file = models.CharField(
+        max_length=500,
+        blank=True,
+        help_text="源文件名"
+    )
+    word_count = models.IntegerField(
+        default=0,
+        help_text="单词数量"
+    )
+    is_active = models.BooleanField(
+        default=True,
+        help_text="是否启用"
+    )
+    # 词汇表级别的系统提示词（用于批量获取例句）
+    system_prompt = models.TextField(
+        blank=True,
+        help_text="系统提示词，用于批量获取例句。留空则使用用户默认DeepSeek配置"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Vocabulary Book"
+        verbose_name_plural = "Vocabulary Books"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.name} ({self.word_count}词)"
+
+
+class VocabularyEntry(models.Model):
+    """词汇表条目模型"""
+    vocabulary_book = models.ForeignKey(
+        VocabularyBook,
+        on_delete=models.CASCADE,
+        related_name='entries'
+    )
+    sequence_number = models.IntegerField(
+        help_text="序号"
+    )
+
+    # 单词基本信息
+    word = models.CharField(
+        max_length=200,
+        help_text="英文单词"
+    )
+    meaning = models.TextField(
+        help_text="中文释义（包含词性，如'n. 旗帜，旗帜'）。获取例句后会追加到末尾"
+    )
+    us_phonetic = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="美式音标"
+    )
+    uk_phonetic = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="英式音标"
+    )
+
+    # 例句状态
+    has_examples = models.BooleanField(
+        default=False,
+        help_text="是否已获取例句"
+    )
+
+    # 星号标记
+    is_marked = models.BooleanField(
+        default=False,
+        help_text="是否带星号（重点词汇）"
+    )
+
+    class Meta:
+        verbose_name = "Vocabulary Entry"
+        verbose_name_plural = "Vocabulary Entries"
+        ordering = ['vocabulary_book', 'sequence_number']
+        unique_together = ('vocabulary_book', 'sequence_number')
+        indexes = [
+            models.Index(fields=['vocabulary_book', 'sequence_number']),
+        ]
+
+    def __str__(self):
+        return f"{self.sequence_number}. {self.word}"

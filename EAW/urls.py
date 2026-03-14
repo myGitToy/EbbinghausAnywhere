@@ -80,4 +80,11 @@ urlpatterns = [
     # 批量操作路由
     path('api/batch/delete/', views.batch_delete_items, name='batch-delete'),
     path('api/batch/move/', views.batch_move_items, name='batch-move'),
+
+    # 词汇表系统路由
+    path('vocabulary/', views.vocabulary_list_view, name='vocabulary-list'),
+    path('vocabulary/<int:book_id>/', views.vocabulary_detail_view, name='vocabulary-detail'),
+    path('api/vocabulary/<int:book_id>/save-prompt/', views.vocabulary_save_prompt_api, name='api-vocabulary-save-prompt'),
+    path('api/vocabulary/batch-import/', views.vocabulary_batch_import_api, name='api-vocabulary-batch-import'),
+    path('api/vocabulary/fetch-examples/', views.vocabulary_fetch_examples_api, name='api-vocabulary-fetch-examples'),
 ]

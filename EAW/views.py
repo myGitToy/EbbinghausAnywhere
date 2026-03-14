@@ -42,7 +42,7 @@ from .translate import baidu_translate, parse_json_to_string, check_api_keys
 from .deepseek import deepseek_translate, check_deepseek_keys, call_deepseek_api
 import openpyxl
 from django.db import transaction
-from .models import Item, Category, Proficiency, ReviewDay, DeepSeekConfig
+from .models import Item, Category, Proficiency, ReviewDay, DeepSeekConfig, VocabularyBook, VocabularyEntry
 import difflib
 import uuid
 from .utils import fetch_and_merge_translation
@@ -2254,4 +2254,155 @@ def get_points_balance_api(request):
         })
 
 
+# ==================== 词汇表系统视图 ====================
+
+@login_required
+def vocabulary_list_view(request):
+    """词汇表列表页"""
+    books = VocabularyBook.objects.filter(is_active=True)
+    return render(request, 'vocabulary_list.html', {'books': books})
+
+
+@login_required
+def vocabulary_detail_view(request, book_id):
+    """词汇表详情页（浏览+选择）"""
+    book = get_object_or_404(VocabularyBook, id=book_id, is_active=True)
+    entries = book.entries.all()
+
+    # 获取用户现有分类
+    categories = Category.objects.filter(user=request.user)
+
+    context = {
+        'book': book,
+        'entries': entries,
+        'categories': categories,
+    }
+    return render(request, 'vocabulary_detail.html', context)
+
+
+@login_required
+@require_http_methods(["POST"])
+def vocabulary_save_prompt_api(request, book_id):
+    """保存词汇表的系统提示词"""
+    book = get_object_or_404(VocabularyBook, id=book_id)
+    data = json.loads(request.body)
+    system_prompt = data.get('system_prompt', '')
+
+    book.system_prompt = system_prompt
+    book.save()
+
+    return JsonResponse({'success': True})
+
+
+@login_required
+@require_http_methods(["POST"])
+def vocabulary_batch_import_api(request):
+    """批量导入API"""
+    data = json.loads(request.body)
+    entry_ids = data.get('entry_ids', [])
+    category_id = data.get('category_id')
+
+    count = vocabulary_import_to_items(request.user, entry_ids, category_id)
+
+    return JsonResponse({
+        'success': True,
+        'imported_count': count
+    })
+
+
+@login_required
+@require_http_methods(["POST"])
+def vocabulary_fetch_examples_api(request):
+    """
+    为单个词汇表条目获取例句
+    使用词汇表的system_prompt（如果设置了）或用户的默认DeepSeek配置
+    """
+    from EAW.deepseek import query_deepseek_api
+
+    data = json.loads(request.body)
+    entry_id = data.get('entry_id')
+    word = data.get('word')
+
+    entry = get_object_or_404(VocabularyEntry, id=entry_id)
+    book = entry.vocabulary_book
+
+    # 确定使用的系统提示词
+    if book.system_prompt:
+        system_prompt = book.system_prompt
+    else:
+        # 使用用户的默认DeepSeek配置
+        try:
+            config = DeepSeekConfig.objects.get(user=request.user)
+            system_prompt = config.system_prompt
+        except DeepSeekConfig.DoesNotExist:
+            system_prompt = '你是英语词典助手。输入：英文单词。输出：JSON格式包含uk_phonetic(英音标)、us_phonetic(美音标)、meaning(中文释义)、example_sentences(2-3个例句数组，每个包含english和chinese字段)。'
+
+    # 调用DeepSeek API
+    try:
+        result = query_deepseek_api(
+            word=word,
+            system_prompt=system_prompt,
+            user=request.user
+        )
+
+        # 提取例句
+        if result.get('example_sentences'):
+            examples = result['example_sentences']
+            # 构建例句预览文本（取第一个例句）
+            if examples and len(examples) > 0:
+                preview = f"{examples[0].get('english', '')}"
+                # 更新VocabularyEntry的meaning字段，添加例句
+                entry.meaning = f"{entry.meaning}\n例句:\n{preview}\n翻译: {examples[0].get('chinese', '')}"
+                entry.has_examples = True
+                entry.save()
+
+                return JsonResponse({
+                    'success': True,
+                    'example': preview[:50] + '...' if len(preview) > 50 else preview
+                })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+    return JsonResponse({'success': False, 'error': '无法获取例句'}, status=500)
+
+
+def vocabulary_import_to_items(user, entry_ids, category_id):
+    """
+    将词汇表条目导入为Item
+    核心逻辑：创建Item记录，触发遗忘曲线
+    """
+    from django.utils import timezone
+    today = timezone.now().date()
+
+    entries = VocabularyEntry.objects.filter(id__in=entry_ids)
+    category = get_object_or_404(Category, id=category_id, user=user)
+
+    created_count = 0
+
+    with transaction.atomic():
+        for entry in entries:
+            # 检查是否已导入
+            if Item.objects.filter(user=user, item=entry.word).exists():
+                continue
+
+            # 创建Item（content包含词性和例句）
+            Item.objects.create(
+                user=user,
+                item=entry.word,
+                content=entry.meaning,  # 可能已包含例句
+                us_phonetic=entry.us_phonetic,
+                uk_phonetic=entry.uk_phonetic,
+                category=category,
+                proficiency=Proficiency.UNFAMILIAR,
+                inputDate=today,
+                initDate=today,
+                next_review_date=today,  # 当天开始复习
+                current_interval=0,
+            )
+            created_count += 1
+
+    return created_count
 

@@ -646,35 +646,46 @@ class VocabularyEntry(models.Model):
         help_text="序号"
     )
 
-    # 单词基本信息
-    word = models.CharField(
+    # PDF原始数据
+    word_og = models.CharField(
         max_length=200,
-        help_text="英文单词"
+        help_text="原始单词（从PDF导入）"
     )
-    meaning = models.TextField(
-        help_text="中文释义（包含词性，如'n. 旗帜，旗帜'）。获取例句后会追加到末尾"
+    meaning_og = models.TextField(
+        help_text="中文释义（包含词性，如'n. 旗帜，旗帜'）。仅包含原始PDF内容"
     )
+    example_og = models.TextField(
+        blank=True,
+        default='',
+        help_text="原始PDF中的例句（如有）"
+    )
+    phonetic_og = models.CharField(
+        max_length=200,
+        blank=True,
+        default='',
+        help_text="原始PDF中的音标"
+    )
+
+    # AI增强数据
     us_phonetic = models.CharField(
         max_length=200,
         blank=True,
-        help_text="美式音标"
+        default='',
+        help_text="美式音标（AI获取）"
     )
     uk_phonetic = models.CharField(
         max_length=200,
         blank=True,
-        help_text="英式音标"
+        default='',
+        help_text="英式音标（AI获取）"
     )
 
-    # 例句状态
-    has_examples = models.BooleanField(
-        default=False,
-        help_text="是否已获取例句"
-    )
-
-    # 星号标记
-    is_marked = models.BooleanField(
-        default=False,
-        help_text="是否带星号（重点词汇）"
+    # 星号标记（原始PDF中的标记）
+    is_marked = models.CharField(
+        max_length=10,
+        blank=True,
+        default='',
+        help_text="星号标记（原始PDF中的标记，如*、**、***）"
     )
 
     class Meta:
@@ -687,4 +698,4 @@ class VocabularyEntry(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.sequence_number}. {self.word}"
+        return f"{self.sequence_number}. {self.word_og}"

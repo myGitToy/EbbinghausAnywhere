@@ -2345,15 +2345,19 @@ def vocabulary_fetch_examples_api(request):
             user=request.user
         )
 
-        # 提取例句
+        # 提取例句和音标
         if result.get('example_sentences'):
             examples = result['example_sentences']
             # 构建例句预览文本（取第一个例句）
             if examples and len(examples) > 0:
                 preview = f"{examples[0].get('english', '')}"
-                # 更新VocabularyEntry的meaning字段，添加例句
-                entry.meaning = f"{entry.meaning}\n例句:\n{preview}\n翻译: {examples[0].get('chinese', '')}"
-                entry.has_examples = True
+                # 更新VocabularyEntry的meaning_og字段，添加例句
+                entry.meaning_og = f"{entry.meaning_og}\n例句:\n{preview}\n翻译: {examples[0].get('chinese', '')}"
+                # 保存AI获取的音标
+                if result.get('us_phonetic'):
+                    entry.us_phonetic = result['us_phonetic']
+                if result.get('uk_phonetic'):
+                    entry.uk_phonetic = result['uk_phonetic']
                 entry.save()
 
                 return JsonResponse({
@@ -2385,14 +2389,14 @@ def vocabulary_import_to_items(user, entry_ids, category_id):
     with transaction.atomic():
         for entry in entries:
             # 检查是否已导入
-            if Item.objects.filter(user=user, item=entry.word).exists():
+            if Item.objects.filter(user=user, item=entry.word_og).exists():
                 continue
 
             # 创建Item（content包含词性和例句）
             Item.objects.create(
                 user=user,
-                item=entry.word,
-                content=entry.meaning,  # 可能已包含例句
+                item=entry.word_og,
+                content=entry.meaning_og,  # 可能已包含例句
                 us_phonetic=entry.us_phonetic,
                 uk_phonetic=entry.uk_phonetic,
                 category=category,

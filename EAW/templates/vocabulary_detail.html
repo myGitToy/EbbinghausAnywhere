@@ -67,25 +67,34 @@
                         <tr>
                             <th width="50"><input type="checkbox" id="checkAll"></th>
                             <th width="60">序号</th>
-                            <th width="150">英文</th>
+                            <th width="180">英文</th>
                             <th>中文（含词性）</th>
-                            <th>例句预览</th>
+                            <th width="150">状态</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for entry in entries %}
-                        <tr data-entry-id="{{ entry.id }}" data-word="{{ entry.word }}">
+                        <tr data-entry-id="{{ entry.id }}" data-word="{{ entry.word_og }}">
                             <td><input type="checkbox" class="entry-checkbox" value="{{ entry.id }}"></td>
                             <td>{{ entry.sequence_number }}</td>
-                            <td><strong>{{ entry.word }}</strong></td>
                             <td>
-                                <small>{{ entry.meaning|truncatewords:10 }}</small>
+                                <strong>{{ entry.word_og }}</strong>
+                                {% if entry.is_marked %}
+                                {% for star in entry.is_marked %}
+                                <i class="fa fa-star text-warning small"></i>
+                                {% endfor %}
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small>{{ entry.meaning_og|truncatewords:10 }}</small>
                             </td>
                             <td class="example-cell" id="example-{{ entry.id }}">
-                                {% if entry.has_examples %}
-                                <span class="text-success small"><i class="fa fa-check"></i> 已获取</span>
+                                {% if entry.example_og %}
+                                <span class="text-info small"><i class="fa fa-book"></i> 原书例句</span>
+                                {% elif entry.us_phonetic or entry.uk_phonetic %}
+                                <span class="text-success small"><i class="fa fa-check"></i> AI增强</span>
                                 {% else %}
-                                <span class="text-muted small">未获取</span>
+                                <span class="text-muted small">未增强</span>
                                 {% endif %}
                             </td>
                         </tr>

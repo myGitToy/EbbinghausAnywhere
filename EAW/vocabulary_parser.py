@@ -40,6 +40,7 @@ class ShanghaiZhongkaoParser:
         1. "序号. /音标/ 词性.中文释义" (如 "7. /ˈæbsənt/ adj.缺席的;缺乏的")
         2. "序号. 词性.中文释义" (如 "648. n. 获得")
         注意：音标可能包含多个部分，如 "/eɪ/,/ən/"
+        注意：PDF中有些行的音标格式不完整（缺少结束的/），需要特殊处理
         """
         data = {}
 
@@ -53,8 +54,18 @@ class ShanghaiZhongkaoParser:
                 if not line or len(line) < 3:
                     continue
 
-                # 先尝试匹配带音标的格式: "序号. /音标/ 词性.中文释义"
+                # 先尝试匹配带完整音标的格式: "序号. /音标/ 词性.中文释义"
                 match = re.match(r'^(\d+)\.\s*/.*/\s*(.+)$', line)
+                if match:
+                    seq_num = int(match.group(1))
+                    meaning = match.group(2).strip()
+                    if meaning:
+                        data[seq_num] = meaning
+                    continue
+
+                # 尝试匹配带不完整音标的格式: "序号. /音标 词性.中文释义" (缺少结束的/)
+                # 提取从第一个空格后的内容（跳过音标部分）
+                match = re.match(r'^(\d+)\.\s*/[^\s]*(?:\s*/[^\s]*)*\s+(.+)$', line)
                 if match:
                     seq_num = int(match.group(1))
                     meaning = match.group(2).strip()
@@ -78,7 +89,7 @@ class ShanghaiZhongkaoParser:
         解析英文部分
         格式: "序号. [*]单词 /音标/"
         示例: "1. *a, an /eɪ/,/ən/" 或 "7. *absent /ˈæbsənt/"
-        返回: {序号: {'word': '单词', 'uk_phonetic': '英式音标', 'is_marked': 是否带星号}}
+        返回: {序号: {'word': '单词', 'phonetic_og': '原始音标', 'is_marked': '星号字符串'}}
         """
         data = {}
 
@@ -100,23 +111,29 @@ class ShanghaiZhongkaoParser:
                 # 提取序号
                 seq_num = int(match.group(1))
 
-                # 检查是否带星号
-                is_marked = '*' in line
-
                 # 提取序号后的内容
                 # 格式: "序号. [*]单词 /音标/"
                 # 先移除序号
                 content = re.sub(r'^\d+\.\s*', '', line)
 
-                # 移除开头的星号（如果有）
-                is_marked = '*' in content  # 再次检查，因为序号后才有星号
-                content = content.lstrip('*').strip()
+                # 提取开头的星号（1-3个）
+                stars = ''
+                stars_match = re.match(r'^(\*{1,3})', content)
+                if stars_match:
+                    stars = stars_match.group(1)
+                    content = content[len(stars):].strip()
 
                 # 提取音标（格式：/.../）
-                phonetic = ''
+                # 先尝试匹配完整格式的音标
+                phonetic_og = ''
                 phonetic_match = re.search(r'/([^/]*(?:/[^/]*)*)/', content)
                 if phonetic_match:
-                    phonetic = phonetic_match.group(0)  # 保留完整的 /.../ 格式
+                    phonetic_og = phonetic_match.group(0)  # 保留完整的 /.../ 格式
+                else:
+                    # 尝试匹配不完整的音标（从第一个/开始到行尾或空格）
+                    phonetic_match = re.search(r'/[^\s]*', content)
+                    if phonetic_match:
+                        phonetic_og = phonetic_match.group(0)  # 不完整的音标，可能是 /xxx 或 /xxx/yyy
 
                 # 查找第一个以字母开头的单词（到音标斜杠为止）
                 # 单词可能包含逗号、空格、括号、点号
@@ -129,8 +146,8 @@ class ShanghaiZhongkaoParser:
                     if word and len(word) >= 2:  # 至少2个字母的单词
                         data[seq_num] = {
                             'word': word,
-                            'uk_phonetic': phonetic,  # 英式音标
-                            'is_marked': is_marked
+                            'phonetic_og': phonetic_og,  # 原始PDF音标
+                            'is_marked': stars  # 星号字符串（可能是*、**、***或空）
                         }
 
         return data
@@ -139,7 +156,7 @@ class ShanghaiZhongkaoParser:
         """
         合并两部分数据
         part1: {序号: '词性.中文释义'}
-        part2: {序号: {'word': '单词', 'uk_phonetic': '/音标/', 'is_marked': 是否带星号}}
+        part2: {序号: {'word': '单词', 'phonetic_og': '/音标/', 'is_marked': '星号字符串'}}
         """
         merged = []
 
@@ -151,32 +168,27 @@ class ShanghaiZhongkaoParser:
             if seq_num in part2:
                 word_info = part2[seq_num]
                 word = word_info['word']
-                uk_phonetic = word_info.get('uk_phonetic', '')
-                is_marked = word_info.get('is_marked', False)
+                phonetic_og = word_info.get('phonetic_og', '')
+                is_marked = word_info.get('is_marked', '')
             else:
                 word = ''
-                uk_phonetic = ''
-                is_marked = False
+                phonetic_og = ''
+                is_marked = ''
 
             # 从part1获取中文释义
-            chinese_meaning = part1.get(seq_num, '')
-
-            # 合并音标和中文释义到meaning字段
-            # 格式: "/音标/ 词性.中文释义" 或 "词性.中文释义"（无音标时）
-            if uk_phonetic:
-                meaning = f"{uk_phonetic} {chinese_meaning}" if chinese_meaning else uk_phonetic
-            else:
-                meaning = chinese_meaning if chinese_meaning else word
+            meaning = part1.get(seq_num, '')
 
             # 至少需要有英文单词
             if word:
                 merged.append({
                     'sequence_number': seq_num,
-                    'word': word,
-                    'meaning': meaning,  # 格式: "/音标/ 词性.中文释义"
-                    'uk_phonetic': uk_phonetic,  # 英式音标（用于导入到Item.uk_phonetic）
-                    'us_phonetic': '',  # 美式音标（PDF不提供）
-                    'is_marked': is_marked
+                    'word_og': word,
+                    'meaning_og': meaning,  # 仅包含中文释义+词性
+                    'phonetic_og': phonetic_og,  # 原始PDF音标
+                    'example_og': '',  # 原始PDF中没有例句字段
+                    'uk_phonetic': '',  # 英式音标（AI获取，PDF解析时不提供）
+                    'us_phonetic': '',  # 美式音标（AI获取，PDF解析时不提供）
+                    'is_marked': is_marked  # 星号字符串（*、**、***或空）
                 })
 
         return merged

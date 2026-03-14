@@ -61,8 +61,17 @@ RUN python manage.py collectstatic --noinput
 
 # 创建启动脚本
 RUN echo '#!/bin/bash\n\
+set -e\n\
 echo "Waiting for services..."\n\
 sleep 5\n\
+\n\
+# 检查必需的环境变量\n\
+if [ -z "$SECRET_KEY" ]; then\n\
+    echo "ERROR: SECRET_KEY environment variable is not set!"\n\
+    echo "Please set SECRET_KEY in docker-compose.yml or .env file"\n\
+    exit 1\n\
+fi\n\
+\n\
 echo "Running migrations..."\n\
 python manage.py makemigrations --noinput\n\
 python manage.py migrate --noinput\n\

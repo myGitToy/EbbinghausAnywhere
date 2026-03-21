@@ -82,53 +82,68 @@
   padding: 0.25rem 0.5rem;
 }
 
-/* 徽章样式 */
-.badge-warning {
-  background-color: #ffc107;
-  color: #212529;
-}
-
-.badge-success {
-  background-color: #28a745;
-  color: white;
-}
-
 .badge-lg {
   font-size: 1rem;
   padding: 0.5rem 0.75rem;
 }
 
-/* 分类标题样式 */
-.border-bottom {
-  border-bottom: 2px solid #dee2e6 !important;
-}
-
-.badge-primary {
-  background-color: #007bff;
-}
-
-.badge-danger {
-  background-color: #dc3545;
-}
-
 /* 响应式设计 */
 @media (max-width: 768px) {
   #calendar {
-    padding: 0 5px;
+    margin: 12px auto;
+    padding: 0 8px;
+    min-height: auto;
+  }
+
+  #calendar .fc {
+    min-height: auto;
   }
   
   .fc-header-toolbar {
     flex-direction: column;
     gap: 10px;
   }
+
+  .fc .fc-toolbar-title {
+    font-size: 1.1rem;
+    text-align: center;
+  }
+
+  .fc .fc-button {
+    padding: 0.35rem 0.65rem;
+    font-size: 0.82rem;
+  }
+
+  .fc-event-subtitle,
+  .fc-event-overdue {
+    display: none;
+  }
   
   .fc-toolbar-chunk {
     display: flex;
     justify-content: center;
   }
+
+  #calendarDayModal .modal-dialog {
+    margin: 0.5rem;
+  }
+
+  #calendarDayModal .modal-content {
+    min-height: calc(100vh - 1rem);
+    max-height: calc(100vh - 1rem);
+    min-height: calc(100dvh - 1rem);
+    max-height: calc(100dvh - 1rem);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
   
   #calendarDayModal .d-flex {
     flex-direction: column;
+  }
+
+  #calendarDayModal .modal-body {
+    max-height: none;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
   }
   
   #calendarDayModal .btn-group-vertical {
@@ -139,6 +154,43 @@
   
   #calendarDayModal .btn-group-vertical .btn {
     flex: 1;
+  }
+}
+
+@media (max-width: 576px) {
+  #calendar {
+    padding: 0;
+  }
+
+  .fc-toolbar-chunk {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .fc .fc-button-group {
+    display: flex;
+    width: 100%;
+  }
+
+  .fc .fc-button-group .fc-button {
+    flex: 1;
+  }
+
+  #calendarDayModal .modal-dialog {
+    min-height: 100vh;
+    margin: 0;
+    min-height: 100dvh;
+  }
+
+  #calendarDayModal .modal-content {
+    min-height: 100vh;
+    max-height: 100vh;
+    min-height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
   }
 }
 

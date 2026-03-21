@@ -356,6 +356,76 @@
 .category-actions button i {
     font-size: 0.85rem;
 }
+
+.table-responsive .table {
+    min-width: 640px;
+}
+
+@media (max-width: 768px) {
+    #category-management,
+    #item-list {
+        padding-top: 1rem !important;
+        padding-bottom: 1.25rem !important;
+    }
+
+    #category-management .card-body,
+    #item-list .card-body {
+        padding: 0.875rem;
+    }
+
+    .category-tabs {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        padding: 0.25rem 0 0.5rem;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .category-tab-wrapper,
+    .category-tab,
+    .add-category-btn {
+        flex: 0 0 auto;
+        white-space: nowrap;
+    }
+
+    .category-actions {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    #batch-actions .alert {
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 0.75rem;
+    }
+
+    #batch-actions .alert > div {
+        width: 100%;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    #batch-actions .btn,
+    #batch-actions .form-select {
+        width: 100% !important;
+    }
+
+    .pagination {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .table-responsive {
+        margin: 0 -0.5rem;
+        padding: 0 0.5rem;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    #item-list .table {
+        font-size: 0.875rem;
+    }
+}
 </style>
 {% endblock %}
 

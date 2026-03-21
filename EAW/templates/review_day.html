@@ -21,8 +21,8 @@
         <div class="card-body p-0">
             {% if page_obj %}
             <!-- Single Table for All Items with responsive wrapper -->
-            <div class="table-responsive">
-            <table class="table table-bordered table-hover mb-0">
+            <div class="table-responsive review-day-table-wrapper">
+            <table class="table table-bordered table-hover mb-0 review-day-table">
                 <thead class="table-info">
                     <tr>
                         <th style="width: 18%;">Item</th>
@@ -99,87 +99,87 @@
                           {% endif %}
                         </td>
                     </tr>
-  
-                    <!-- Modal -->
-                    <div class="modal fade" id="myModal{{ review_item.item.id }}" tabindex="-1" aria-labelledby="myModalLabel{{ review_item.item.id }}" aria-hidden="true">
-                        <div class="modal-dialog">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title" id="myModalLabel{{ review_item.item.id }}">
-                                        <a href="/admin/EAW/item/{{ review_item.item.id }}/change/">{{ review_item.item.item }}</a>
-                                    </h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                </div>
-                                <div class="modal-body">
-                                    <p>
-                                      <strong>状态:</strong>
-                                      {% if review_item.reviewed_today %}
-                                        {% if review_item.unfamiliar_count > 0 %}
-                                          <span class="badge bg-danger">已点评 · 不熟悉（今天）</span>
-                                        {% else %}
-                                          <span class="badge bg-secondary">已点评（今天）</span>
-                                        {% endif %}
-                                      {% else %}
-                                        <span class="badge bg-info">待复习</span>
-                                      {% endif %}
-                                    </p>
-                                    {% if review_item.reviewed_today and review_item.last_review_type %}
-                                      <p><small>（评论类型：{{ review_item.last_review_type }})</small></p>
-                                    {% endif %}
-                                    <p><strong>Category:</strong> {{ review_item.item.category.name }}</p>
-                                    <p><strong>Input Date:</strong> {{ review_item.item.inputDate }}</p>
-                                    {% if review_item.item.category.name == "单词" %}
-                                        {% if review_item.item.us_phonetic or review_item.item.uk_phonetic %}
-                                            <p><strong>Pronunciation:</strong></p>
-                                            <div class="mb-2">
-                                                <!-- 美式发音 -->
-                                                {% if review_item.item.us_phonetic %}
-                                                    <div class="d-flex align-items-center mb-2">
-                                                        <span class="badge bg-info me-2" style="min-width: 120px;">美 [{{ review_item.item.us_phonetic }}]</span>
-                                                        <button class="btn btn-sm btn-link p-0 me-1 tts-play-btn" 
-                                                                data-word="{{ review_item.item.item }}" 
-                                                                data-accent="us" 
-                                                                title="播放美式发音"
-                                                                onclick="event.stopPropagation(); event.preventDefault(); window.playAudioWithAccent('{{ review_item.item.item }}', 'us'); return false;">
-                                                            <i class="fa fa-volume-up text-primary"></i>
-                                                        </button>
-                                                        <small class="tts-method-icon text-muted" data-accent="us"></small>
-                                                    </div>
-                                                {% endif %}
-                                                <!-- 英式发音 -->
-                                                {% if review_item.item.uk_phonetic %}
-                                                    <div class="d-flex align-items-center mb-2">
-                                                        <span class="badge bg-info me-2" style="min-width: 120px;">英 [{{ review_item.item.uk_phonetic }}]</span>
-                                                        <button class="btn btn-sm btn-link p-0 me-1 tts-play-btn" 
-                                                                data-word="{{ review_item.item.item }}" 
-                                                                data-accent="uk" 
-                                                                title="播放英式发音"
-                                                                onclick="event.stopPropagation(); event.preventDefault(); window.playAudioWithAccent('{{ review_item.item.item }}', 'uk'); return false;">
-                                                            <i class="fa fa-volume-up text-primary"></i>
-                                                        </button>
-                                                        <small class="tts-method-icon text-muted" data-accent="uk"></small>
-                                                    </div>
-                                                {% endif %}
-                                            </div>
-                                        {% endif %}
-                                    {% endif %}
-                                    {% autoescape off %}
-                                    <p style="white-space: pre-line"><strong>Content:</strong><br>{{ review_item.item.content|safe }}</p>
-                                    {% endautoescape %}
-                                </div>
-                                <div class="modal-footer">
-                                  <button class="btn btn-success feedback-btn" data-id="{{ review_item.item.id }}" data-action="yes" {% if review_item.reviewed_today %}disabled{% endif %}>YES</button>
-                                  <button class="btn btn-danger feedback-btn" data-id="{{ review_item.item.id }}" data-action="no" {% if review_item.reviewed_today %}disabled{% endif %}>NO</button>
-                                  <button class="btn btn-warning feedback-btn" data-id="{{ review_item.item.id }}" data-action="reset">RESET</button>
-                                  <button type="button" class="btn btn-dark" data-bs-dismiss="modal">Close</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                     {% endfor %}
                 </tbody>
             </table>
             </div>
+        <div class="review-day-modals">
+          {% for review_item in page_obj %}
+          <div class="modal fade" id="myModal{{ review_item.item.id }}" tabindex="-1" aria-labelledby="myModalLabel{{ review_item.item.id }}" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title" id="myModalLabel{{ review_item.item.id }}">
+                    <a href="/admin/EAW/item/{{ review_item.item.id }}/change/">{{ review_item.item.item }}</a>
+                  </h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                  <p>
+                    <strong>状态:</strong>
+                    {% if review_item.reviewed_today %}
+                    {% if review_item.unfamiliar_count > 0 %}
+                      <span class="badge bg-danger">已点评 · 不熟悉（今天）</span>
+                    {% else %}
+                      <span class="badge bg-secondary">已点评（今天）</span>
+                    {% endif %}
+                    {% else %}
+                    <span class="badge bg-info">待复习</span>
+                    {% endif %}
+                  </p>
+                  {% if review_item.reviewed_today and review_item.last_review_type %}
+                    <p><small>（评论类型：{{ review_item.last_review_type }})</small></p>
+                  {% endif %}
+                  <p><strong>Category:</strong> {{ review_item.item.category.name }}</p>
+                  <p><strong>Input Date:</strong> {{ review_item.item.inputDate }}</p>
+                  {% if review_item.item.category.name == "单词" %}
+                    {% if review_item.item.us_phonetic or review_item.item.uk_phonetic %}
+                      <p><strong>Pronunciation:</strong></p>
+                      <div class="mb-2">
+                        {% if review_item.item.us_phonetic %}
+                          <div class="d-flex align-items-center mb-2">
+                            <span class="badge bg-info me-2" style="min-width: 120px;">美 [{{ review_item.item.us_phonetic }}]</span>
+                            <button class="btn btn-sm btn-link p-0 me-1 tts-play-btn"
+                                data-word="{{ review_item.item.item }}"
+                                data-accent="us"
+                                title="播放美式发音"
+                                onclick="event.stopPropagation(); event.preventDefault(); window.playAudioWithAccent('{{ review_item.item.item }}', 'us'); return false;">
+                              <i class="fa fa-volume-up text-primary"></i>
+                            </button>
+                            <small class="tts-method-icon text-muted" data-accent="us"></small>
+                          </div>
+                        {% endif %}
+                        {% if review_item.item.uk_phonetic %}
+                          <div class="d-flex align-items-center mb-2">
+                            <span class="badge bg-info me-2" style="min-width: 120px;">英 [{{ review_item.item.uk_phonetic }}]</span>
+                            <button class="btn btn-sm btn-link p-0 me-1 tts-play-btn"
+                                data-word="{{ review_item.item.item }}"
+                                data-accent="uk"
+                                title="播放英式发音"
+                                onclick="event.stopPropagation(); event.preventDefault(); window.playAudioWithAccent('{{ review_item.item.item }}', 'uk'); return false;">
+                              <i class="fa fa-volume-up text-primary"></i>
+                            </button>
+                            <small class="tts-method-icon text-muted" data-accent="uk"></small>
+                          </div>
+                        {% endif %}
+                      </div>
+                    {% endif %}
+                  {% endif %}
+                  {% autoescape off %}
+                  <p style="white-space: pre-line"><strong>Content:</strong><br>{{ review_item.item.content|safe }}</p>
+                  {% endautoescape %}
+                </div>
+                <div class="modal-footer">
+                  <button class="btn btn-success feedback-btn" data-id="{{ review_item.item.id }}" data-action="yes" {% if review_item.reviewed_today %}disabled{% endif %}>YES</button>
+                  <button class="btn btn-danger feedback-btn" data-id="{{ review_item.item.id }}" data-action="no" {% if review_item.reviewed_today %}disabled{% endif %}>NO</button>
+                  <button class="btn btn-warning feedback-btn" data-id="{{ review_item.item.id }}" data-action="reset">RESET</button>
+                  <button type="button" class="btn btn-dark" data-bs-dismiss="modal">Close</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
             {% else %}
             <!-- Empty State -->
             <div class="alert alert-info text-center m-4">

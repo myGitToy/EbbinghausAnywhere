@@ -336,13 +336,36 @@
                         if (action === 'yes' || action === 'no') {
                             // 标记当前单词已复习
                             row.setAttribute('data-reviewed', 'true');
-                            
-                            // 关闭当前modal
-                            const currentModalElement = document.getElementById('myModal' + wordId);
-                            const currentModal = bootstrap.Modal.getInstance(currentModalElement);
-                            if (currentModal) {
-                                currentModal.hide();
-                            }
+
+                            const queueNextReviewModal = (currentWordId, nextRow, onComplete) => {
+                                const currentModalElement = document.getElementById('myModal' + currentWordId);
+                                if (!currentModalElement) {
+                                    if (nextRow) {
+                                        const nextWordId = nextRow.id.replace('td', '');
+                                        const nextModalElement = document.getElementById('myModal' + nextWordId);
+                                        if (nextModalElement) {
+                                            bootstrap.Modal.getOrCreateInstance(nextModalElement).show();
+                                        }
+                                    } else if (typeof onComplete === 'function') {
+                                        onComplete();
+                                    }
+                                    return;
+                                }
+
+                                currentModalElement.addEventListener('hidden.bs.modal', () => {
+                                    if (nextRow) {
+                                        const nextWordId = nextRow.id.replace('td', '');
+                                        const nextModalElement = document.getElementById('myModal' + nextWordId);
+                                        if (nextModalElement) {
+                                            bootstrap.Modal.getOrCreateInstance(nextModalElement).show();
+                                        }
+                                    } else if (typeof onComplete === 'function') {
+                                        onComplete();
+                                    }
+                                }, { once: true });
+
+                                bootstrap.Modal.getOrCreateInstance(currentModalElement).hide();
+                            };
                             
                             // 查找下一个未复习的单词
                             const allRows = document.querySelectorAll('tbody tr[id^="td"]');
@@ -368,26 +391,14 @@
                                 }
                             }
                             
-                            // 打开下一个modal
+                            // 当前 modal 完整关闭后再切换，避免残留遮罩
                             if (nextRow) {
-                                setTimeout(() => {
-                                    const nextWordId = nextRow.id.replace('td', '');
-                                    const nextModalElement = document.getElementById('myModal' + nextWordId);
-                                    const nextModal = new bootstrap.Modal(nextModalElement);
-                                    nextModal.show();
-                                }, 300); // 延迟300ms确保当前modal完全关闭
+                                queueNextReviewModal(wordId, nextRow);
                             } else {
-                                // 没有更多单词，清除可能残留的backdrop并重新加载内容
-                                setTimeout(() => {
-                                    const backdrops = document.querySelectorAll('.modal-backdrop');
-                                    backdrops.forEach(backdrop => backdrop.remove());
-                                    document.body.classList.remove('modal-open');
-                                    document.body.style.overflow = '';
-                                    document.body.style.paddingRight = '';
-                                    
+                                queueNextReviewModal(wordId, null, () => {
                                     // 重新加载内容以刷新日期
                                     loadReviewContent();
-                                }, 300);
+                                });
                             }
                         } else if (action === 'reset') {
                             // RESET操作后更新样式并重新加载内容

@@ -298,6 +298,32 @@
       const action = button.getAttribute('data-action');
       const row = document.getElementById(`td${wordId}`);
       const data = JSON.stringify({ id: wordId, date: '{{ reviewdate }}' });
+
+      const queueNextReviewModal = (currentWordId, nextRow) => {
+        const currentModalElement = document.getElementById('myModal' + currentWordId);
+        if (!currentModalElement) {
+          if (nextRow) {
+            const nextWordId = nextRow.id.replace('td', '');
+            const nextModalElement = document.getElementById('myModal' + nextWordId);
+            if (nextModalElement) {
+              bootstrap.Modal.getOrCreateInstance(nextModalElement).show();
+            }
+          }
+          return;
+        }
+
+        currentModalElement.addEventListener('hidden.bs.modal', () => {
+          if (nextRow) {
+            const nextWordId = nextRow.id.replace('td', '');
+            const nextModalElement = document.getElementById('myModal' + nextWordId);
+            if (nextModalElement) {
+              bootstrap.Modal.getOrCreateInstance(nextModalElement).show();
+            }
+          }
+        }, { once: true });
+
+        bootstrap.Modal.getOrCreateInstance(currentModalElement).hide();
+      };
   
       // 发送请求到后端
       postData(feedbackUrls[action], data, (response) => {
@@ -319,12 +345,6 @@
 
           // 如果是YES或NO操作，自动跳转到下一个未复习的单词
           if (action === 'yes' || action === 'no') {
-            // 关闭当前modal
-            const currentModal = bootstrap.Modal.getInstance(document.getElementById('myModal' + wordId));
-            if (currentModal) {
-              currentModal.hide();
-            }
-
             // 查找下一个未复习的单词（跳过已点评的行）
             const allRows = document.querySelectorAll('tbody tr[id^="td"]');
             let foundCurrent = false;
@@ -364,22 +384,11 @@
               statusCell.innerHTML = `<span class="badge bg-secondary">已点评（今天）</span>`;
             }
 
-            // 打开下一个modal（如果有）
+            // 当前 modal 完整关闭后再打开下一个，避免残留遮罩
             if (nextRow) {
-              setTimeout(() => {
-                const nextWordId = nextRow.id.replace('td', '');
-                const nextModal = new bootstrap.Modal(document.getElementById('myModal' + nextWordId));
-                nextModal.show();
-              }, 300); // 延迟300ms确保当前modal完全关闭
+              queueNextReviewModal(wordId, nextRow);
             } else {
-              // 没有更多单词，清除可能残留的backdrop
-              setTimeout(() => {
-                const backdrops = document.querySelectorAll('.modal-backdrop');
-                backdrops.forEach(backdrop => backdrop.remove());
-                document.body.classList.remove('modal-open');
-                document.body.style.overflow = '';
-                document.body.style.paddingRight = '';
-              }, 300);
+              queueNextReviewModal(wordId, null);
             }
           }
         } else {

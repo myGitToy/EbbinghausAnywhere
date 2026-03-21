@@ -138,8 +138,9 @@
   function openDayModal(dateStr) {
     const modalBody = document.getElementById('calendarDayModalBody');
     const modalTitle = document.getElementById('calendarDayModalLabel');
+    const modalElement = document.getElementById('calendarDayModal');
     
-    if (!modalBody) {
+    if (!modalBody || !modalTitle || !modalElement) {
       console.error('Modal body not found');
       return;
     }
@@ -150,15 +151,13 @@
     modalBody.innerHTML = `
       <div class="text-center py-3">
         <div class="spinner-border text-primary" role="status">
-          <span class="sr-only">加载中...</span>
+          <span class="visually-hidden">加载中...</span>
         </div>
       </div>
     `;
 
     // 显示模态框
-    if (typeof $ !== 'undefined' && $.fn.modal) {
-      $('#calendarDayModal').modal('show');
-    }
+    bootstrap.Modal.getOrCreateInstance(modalElement).show();
 
     // 获取当天复习项目
     fetch(`/api/calendar-day-items/?date=${dateStr}`, { 
@@ -203,11 +202,11 @@
             <h5 class="mb-1">${escapeHtml(it.item)}</h5>
             <p class="mb-1 text-muted">
               <small>周期: ${it.interval_day} 天</small>
-              ${it.unfamiliar_count > 0 ? `<span class="badge badge-warning ml-2">不熟: ${it.unfamiliar_count}</span>` : ''}
+              ${it.unfamiliar_count > 0 ? `<span class="badge bg-warning text-dark ms-2">不熟: ${it.unfamiliar_count}</span>` : ''}
             </p>
             <small class="text-muted">下次复习: ${it.next_review_date || '-'}</small>
           </div>
-          <div class="btn-group-vertical btn-group-sm ml-3" role="group">
+          <div class="btn-group-vertical btn-group-sm ms-3" role="group">
             <a href="${it.detail_url}" class="btn btn-outline-primary" target="_blank">详情</a>
             <button class="btn btn-success btn-feedback" data-action="yes" data-id="${it.id}">
               已掌握
@@ -284,7 +283,7 @@
           // 更新UI显示已点评
           const btnGroup = itemDiv.querySelector('.btn-group-vertical');
           if (btnGroup) {
-            btnGroup.innerHTML = '<span class="badge badge-success">已点评</span>';
+            btnGroup.innerHTML = '<span class="badge bg-success">已点评</span>';
           }
           
           // 刷新日历事件
@@ -313,8 +312,8 @@
   // 监听模态框关闭事件，刷新日历
   document.addEventListener('DOMContentLoaded', function() {
     const modal = document.getElementById('calendarDayModal');
-    if (modal && typeof $ !== 'undefined' && $.fn.modal) {
-      $(modal).on('hidden.bs.modal', function () {
+    if (modal) {
+      modal.addEventListener('hidden.bs.modal', function () {
         if (calendarInstance) {
           calendarInstance.refetchEvents();
         }

@@ -226,7 +226,7 @@ class DeepSeekConfigForm(forms.ModelForm):
         fields = ['model', 'temperature', 'system_prompt', 'is_active']
         widgets = {
             'model': forms.Select(
-                choices=[('deepseek-chat', 'deepseek-chat')],
+                choices=[('deepseek-v4-flash', 'deepseek-v4-flash')],
                 attrs={'class': 'form-control'}
             ),
             'temperature': forms.NumberInput(

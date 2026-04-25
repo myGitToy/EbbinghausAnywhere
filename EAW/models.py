@@ -139,7 +139,7 @@ class DeepSeekConfig(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, editable=False)
     model = models.CharField(
         max_length=50,
-        default='deepseek-chat',
+        default='deepseek-v4-flash',
         help_text="DeepSeek 模型名称"
     )
     temperature = models.FloatField(

@@ -41,9 +41,11 @@ python manage.py runserver
 ### API Key 配置
 已在 `.env` 文件中配置：
 ```env
-DEEPSEEK_API_KEY=sk-1af13fbd65ff4f5c8708259065e66445
+DEEPSEEK_API_KEY=your_deepseek_api_key_here
 DEEPSEEK_BASE_URL=https://api.deepseek.com
 ```
+
+> 当前默认模型为 `deepseek-v4-flash`，thinking 默认关闭。无需额外配置。
 
 ### 温度参数建议
 - **0.0** - 代码生成/数学解题（精确）

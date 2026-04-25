@@ -57,8 +57,11 @@ def call_deepseek_api(word, config=None, user=None):
             # 使用默认配置
             config = None
     
-    # 设置默认参数
-    model = config.model if config else 'deepseek-chat'
+    DEFAULT_MODEL = 'deepseek-v4-flash'
+    LEGACY_MODEL_MAP = {'deepseek-chat': DEFAULT_MODEL}
+
+    raw_model = config.model if config else DEFAULT_MODEL
+    model = LEGACY_MODEL_MAP.get(raw_model, raw_model)
     temperature = config.temperature if config else 1.0
     system_prompt = config.system_prompt if config else (
         '你是英语词典助手。输入：英文单词。输出：JSON格式包含uk_phonetic(英音标)、'
@@ -66,20 +69,20 @@ def call_deepseek_api(word, config=None, user=None):
         '每个包含english和chinese字段)。目标用户：小学5年级。'
         '严格按照JSON格式输出，不要添加任何其他文字或markdown代码块标记。'
     )
-    
+
     try:
         # 初始化 OpenAI 客户端，使用 DeepSeek 的 base_url
         client = OpenAI(
             api_key=DEEPSEEK_API_KEY,
             base_url=DEEPSEEK_BASE_URL
         )
-        
+
         print(f"=== 调用 DeepSeek API ===")
         print(f"Word: {word}")
         print(f"Model: {model}")
         print(f"Temperature: {temperature}")
-        
-        # 调用 API
+
+        # 调用 API — 显式关闭 thinking，保持非思考模式
         response = client.chat.completions.create(
             model=model,
             messages=[
@@ -87,7 +90,8 @@ def call_deepseek_api(word, config=None, user=None):
                 {"role": "user", "content": word}
             ],
             temperature=temperature,
-            stream=False
+            stream=False,
+            extra_body={"thinking": {"type": "disabled"}},
         )
         
         # 获取响应内容

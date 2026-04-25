@@ -1689,7 +1689,7 @@ def deepseek_config_view(request):
     config, created = DeepSeekConfig.objects.get_or_create(
         user=request.user,
         defaults={
-            'model': 'deepseek-chat',
+            'model': 'deepseek-v4-flash',
             'temperature': 1.0,
             'system_prompt': '你是英语词典助手。输入：英文单词。输出：JSON格式包含uk_phonetic(英音标)、us_phonetic(美音标)、meaning(中文释义)、example_sentences(2-3个例句数组，每个包含english和chinese字段)。目标用户：小学5年级。严格按照JSON格式输出，不要添加任何其他文字或markdown代码块标记。',
             'is_active': True

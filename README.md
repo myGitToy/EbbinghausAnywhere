@@ -32,11 +32,9 @@
     BAIDU_SECRET_KEY=your_baidu_secret_key
     # 默认AI模型的选择（baidu或者deepseek）
     DEFAULT_AI_BACKEND=deepseek
-    # DeepSeek API 配置（默认使用最新的chat模型）
+    # DeepSeek API 配置（默认使用 deepseek-v4-flash，thinking 默认关闭）
     DEEPSEEK_API_KEY=your_deepseek_api_token
     DEEPSEEK_BASE_URL=https://api.deepseek.com
-    DEEPSEEK_ENABLED=True
-    DEEPSEEK_DEFAULT_MODEL=deepseek-chat
 
 ```
 

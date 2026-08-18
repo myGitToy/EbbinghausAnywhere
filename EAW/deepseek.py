@@ -9,9 +9,14 @@ import re
 import environ
 import sys
 import io
+import logging
 from pathlib import Path
 from openai import OpenAI
 from django.conf import settings
+
+from .pricing import DEFAULT_MODEL, LEGACY_MODEL_MAP
+
+logger = logging.getLogger(__name__)
 
 # 修复 Windows 控制台编码问题
 if sys.platform == 'win32':
@@ -56,9 +61,6 @@ def call_deepseek_api(word, config=None, user=None):
         except DeepSeekConfig.DoesNotExist:
             # 使用默认配置
             config = None
-    
-    DEFAULT_MODEL = 'deepseek-v4-flash'
-    LEGACY_MODEL_MAP = {'deepseek-chat': DEFAULT_MODEL}
 
     raw_model = config.model if config else DEFAULT_MODEL
     model = LEGACY_MODEL_MAP.get(raw_model, raw_model)
@@ -93,7 +95,36 @@ def call_deepseek_api(word, config=None, user=None):
             stream=False,
             extra_body={"thinking": {"type": "disabled"}},
         )
-        
+
+        # ―― 计量计费埋点 ――
+        # 口径：非流式调用，以"响应完成时刻"（create() 返回点）判定峰/闲档；
+        # 若单次调用跨整点（如 8:59 请求 9:10 返回），按完成时刻计，
+        # 最多差一个档位（《DeepSeek_API_峰谷定价适配指南》§6.2）。
+        # 计费/落库失败绝不影响翻译主流程（billing 内部全捕获，此处再兜底）。
+        usage_info = None
+        try:
+            from .billing import extract_usage, record_usage
+            counts = extract_usage(response)
+            if counts is not None:
+                prompt_tokens, cached_tokens, output_tokens = counts
+                usage_log = record_usage(
+                    model=model,
+                    user=user,
+                    prompt_tokens=prompt_tokens,
+                    cached_tokens=cached_tokens,
+                    output_tokens=output_tokens,
+                )
+                if usage_log is not None:
+                    usage_info = {
+                        "band": usage_log.band,
+                        "cost": str(usage_log.cost),
+                        "prompt_tokens": usage_log.prompt_tokens,
+                        "cached_tokens": usage_log.cached_tokens,
+                        "output_tokens": usage_log.output_tokens,
+                    }
+        except Exception as e:
+            logger.warning("DeepSeek 用量计费失败（不影响翻译主流程）: %s", e)
+
         # 获取响应内容
         content = response.choices[0].message.content
         print(f"=== DeepSeek API 响应 ===")
@@ -108,6 +139,9 @@ def call_deepseek_api(word, config=None, user=None):
         
         # 转换为与百度翻译兼容的格式
         result = parse_deepseek_to_baidu_format(json_data, word)
+        # 计费元信息随结果带出（调用方只读白名单键，不会误存）
+        if usage_info is not None:
+            result["_usage"] = usage_info
         return result
         
     except Exception as e:

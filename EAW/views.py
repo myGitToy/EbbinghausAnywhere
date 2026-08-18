@@ -7,6 +7,8 @@ from datetime import timedelta
 from django.utils.timezone import now
 from django import forms
 from .forms import InputForm,  CustomUserCreationForm, EmailUpdateForm, UpdateNameForm, CustomPasswordChangeForm, DeepSeekConfigForm
+from decimal import Decimal
+from .billing import get_cost_summary, get_pricing_table
 from django.utils.decorators import method_decorator
 from django.views.generic.detail import DetailView
 from django.contrib.auth.decorators import permission_required
@@ -1706,8 +1708,23 @@ def deepseek_config_view(request):
             messages.error(request, '配置保存失败，请检查输入。')
     else:
         form = DeepSeekConfigForm(instance=config)
-    
-    return render(request, 'deepseek_config.html', {'form': form})
+
+    # 峰谷价目表与费用汇总（billing 层保证不抛异常）
+    summary = get_cost_summary()
+    cost_summary = {
+        'total_cost': f"¥{summary['total_cost'].quantize(Decimal('0.0001')):f}",
+        'month_cost': f"¥{summary['month_cost'].quantize(Decimal('0.0001')):f}",
+        'month_peak_cost': f"¥{summary['month_peak_cost'].quantize(Decimal('0.0001')):f}",
+        'peak_ratio': summary['peak_ratio'] if summary['peak_ratio'] is not None else '0.0%',
+    }
+
+    context = {
+        'form': form,
+        'pricing_table': get_pricing_table(),
+        'cost_summary': cost_summary,
+        'peak_windows_note': '高峰时段：北京时间 9:00–12:00、14:00–18:00（每天适用，含周末）；其余为空闲时段。高峰价格为空闲的 2 倍。',
+    }
+    return render(request, 'deepseek_config.html', context)
 
 
 @login_required
@@ -1726,10 +1743,15 @@ def deepseek_query_view(request):
             
             # 调用 DeepSeek API
             result = call_deepseek_api(word, user=request.user)
-            
+
             if not result:
                 return JsonResponse({'success': False, 'error': 'API 调用失败或返回空结果'})
-            
+
+            # 剥离内部计费元信息，不进业务 data（不可变方式，不就地修改返回值）
+            usage_info = result.get('_usage')
+            if usage_info is not None:
+                result = {k: v for k, v in result.items() if k != '_usage'}
+
             # 解析结果
             uk_phonetic = result.get('phonetic', [])[0] if result.get('phonetic') else ''
             us_phonetic = result.get('phonetic', [])[1] if len(result.get('phonetic', [])) > 1 else ''
@@ -1769,7 +1791,13 @@ def deepseek_query_view(request):
                     'example_sentences': example_sentences
                 }
             }
-            
+
+            # 本次调用费用与峰/闲档位（指南§7：消费明细加峰闲标记）
+            if usage_info:
+                usage_info['band_display'] = '高峰' if usage_info['band'] == 'peak' else '空闲'
+                usage_info['cost_display'] = f"{Decimal(usage_info['cost']).quantize(Decimal('0.0001')):f}"
+                response_data['usage'] = usage_info
+
             return JsonResponse(response_data)
             
         except json.JSONDecodeError:

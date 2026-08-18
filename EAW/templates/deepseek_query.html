@@ -89,6 +89,9 @@
                             </div>
                         </div>
 
+                        <!-- 本次调用费用与峰/闲档位 -->
+                        <div id="usage-info" class="text-muted small mb-2 d-none"></div>
+
                         <!-- 分类选择区域 -->
                         <div class="card border-info mb-3">
                             <div class="card-body">
@@ -614,7 +617,7 @@ function queryWord(word) {
         
         if (data.success) {
             currentData = data.data;
-            displayResult(word, data.data);
+            displayResult(word, data.data, data.usage);
         } else {
             alert('查询失败: ' + (data.error || '未知错误'));
         }
@@ -636,9 +639,29 @@ function queryWord(word) {
 }
 
 // 显示查询结果
-function displayResult(word, data) {
+function displayResult(word, data, usage) {
     const resultContainer = document.getElementById('result-container');
-    
+
+    // 本次调用费用与峰/闲档位（无计费信息时隐藏）；DOM API 构造，避免 innerHTML 注入面
+    const usageEl = document.getElementById('usage-info');
+    if (usage) {
+        const badge = document.createElement('span');
+        badge.className = usage.band === 'peak' ? 'badge bg-danger' : 'badge bg-success';
+        badge.textContent = usage.band === 'peak' ? '高峰' : '空闲';
+        usageEl.replaceChildren(
+            badge,
+            document.createTextNode(
+                ' 本次费用 ¥' + usage.cost_display
+                + '（输入 ' + usage.prompt_tokens
+                + ' · 缓存命中 ' + usage.cached_tokens
+                + ' · 输出 ' + usage.output_tokens + ' tokens）'
+            )
+        );
+        usageEl.classList.remove('d-none');
+    } else {
+        usageEl.classList.add('d-none');
+    }
+
     // 显示单词
     document.getElementById('result-word').textContent = word;
     
@@ -811,6 +834,7 @@ document.getElementById('save-btn').addEventListener('click', function() {
 // 清除结果
 document.getElementById('clear-btn').addEventListener('click', function() {
     document.getElementById('result-container').classList.add('d-none');
+    document.getElementById('usage-info').classList.add('d-none');
     document.getElementById('word-input').value = '';
     currentWord = '';
     currentData = null;

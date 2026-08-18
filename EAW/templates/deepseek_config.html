@@ -88,6 +88,67 @@
                 </div>
             </div>
 
+            <!-- 峰谷价目表 -->
+            {% if pricing_table %}
+            <div class="card shadow mt-4">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0"><i class="fa fa-yen-sign"></i> 模型价目表（峰谷分时）</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped align-middle">
+                            <thead>
+                                <tr>
+                                    <th>模型</th>
+                                    <th>输入·缓存命中</th>
+                                    <th>输入·缓存未命中</th>
+                                    <th>输出</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in pricing_table %}
+                                <tr>
+                                    <td><code>{{ row.model }}</code></td>
+                                    <td>{{ row.cache_hit }}</td>
+                                    <td>{{ row.cache_miss }}</td>
+                                    <td>{{ row.output }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="form-text mb-0">单位：元/百万 tokens。{{ peak_windows_note }}</p>
+                    <p class="form-text mb-0">旧名称 deepseek-chat / deepseek-reasoner 按 deepseek-v4-flash 价格计费。</p>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- 费用汇总 -->
+            {% if cost_summary %}
+            <div class="card shadow mt-4">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0"><i class="fa fa-chart-pie"></i> 费用汇总</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <div class="fs-5">{{ cost_summary.total_cost }}</div>
+                            <div class="form-text">累计费用</div>
+                        </div>
+                        <div class="col-4">
+                            <div class="fs-5">{{ cost_summary.month_cost }}</div>
+                            <div class="form-text">本月费用</div>
+                        </div>
+                        <div class="col-4">
+                            <div class="fs-5">{{ cost_summary.peak_ratio }}</div>
+                            <div class="form-text">本月高峰占比（{{ cost_summary.month_peak_cost }}）</div>
+                        </div>
+                    </div>
+                    <p class="form-text mt-2 mb-0">流水按调用时刻的峰/闲档与当时单价快照计费，明细见管理后台 DeepSeek Usage Logs。</p>
+                </div>
+            </div>
+            {% endif %}
+
             <!-- API 状态检查 -->
             <div class="card shadow mt-4">
                 <div class="card-header bg-info text-white">

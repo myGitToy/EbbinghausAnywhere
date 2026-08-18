@@ -1,10 +1,15 @@
+from decimal import Decimal
+
 from django.db import models
 from django.urls import reverse
 from django.contrib.auth.models import User
+from django.utils import timezone
 from dirtyfields import DirtyFieldsMixin
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db.models import Q
+
+from .pricing import PriceTier
 
 # Create your models here.
 # Word Category defined by user
@@ -163,6 +168,128 @@ class DeepSeekConfig(models.Model):
     class Meta:
         verbose_name = "DeepSeek Configuration"
         verbose_name_plural = "DeepSeek Configurations"
+
+
+class ModelPricing(models.Model):
+    """模型峰谷价格表（元/百万 tokens），每模型一行。
+
+    峰时三列全部 > 0 才启用峰时计费，否则任何时段均按闲时列计
+    （《DeepSeek_API_峰谷定价适配指南》§5 方案A变体）。
+    """
+    model_name = models.CharField(
+        max_length=50, unique=True,
+        help_text="规范模型名，如 deepseek-v4-flash"
+    )
+    offpeak_cache_hit_price = models.DecimalField(
+        max_digits=8, decimal_places=4,
+        help_text="闲时·输入（缓存命中），元/百万 tokens"
+    )
+    offpeak_cache_miss_price = models.DecimalField(
+        max_digits=8, decimal_places=4,
+        help_text="闲时·输入（缓存未命中），元/百万 tokens"
+    )
+    offpeak_output_price = models.DecimalField(
+        max_digits=8, decimal_places=4,
+        help_text="闲时·输出，元/百万 tokens"
+    )
+    peak_cache_hit_price = models.DecimalField(
+        max_digits=8, decimal_places=4, default=Decimal("0.0000"),
+        help_text="高峰·输入（缓存命中）；三列全为 0 表示未配置峰时价，按闲时计"
+    )
+    peak_cache_miss_price = models.DecimalField(
+        max_digits=8, decimal_places=4, default=Decimal("0.0000"),
+        help_text="高峰·输入（缓存未命中）；三列全为 0 表示未配置峰时价，按闲时计"
+    )
+    peak_output_price = models.DecimalField(
+        max_digits=8, decimal_places=4, default=Decimal("0.0000"),
+        help_text="高峰·输出；三列全为 0 表示未配置峰时价，按闲时计"
+    )
+    pricing_updated_at = models.DateTimeField(
+        default=timezone.now,
+        help_text="价格最后更新时间（官方调价留痕）"
+    )
+    price_source = models.CharField(
+        max_length=100, default="official-pricing:2026-08-17",
+        help_text="价格来源标记，如官方价格页 + 抓取日期"
+    )
+
+    def __str__(self):
+        return f"{self.model_name} pricing"
+
+    @property
+    def peak_enabled(self) -> bool:
+        """峰时三列是否全部配置（均 > 0）；False 时任何时段按闲时列计。"""
+        return PriceTier(
+            cache_hit_price=self.peak_cache_hit_price,
+            cache_miss_price=self.peak_cache_miss_price,
+            output_price=self.peak_output_price,
+        ).is_configured
+
+    class Meta:
+        verbose_name = "Model Pricing"
+        verbose_name_plural = "Model Pricing"
+        ordering = ["model_name"]
+
+
+class DeepSeekUsageLog(models.Model):
+    """DeepSeek API 用量流水（审计）：tokens + 档位 + 计费单价快照 + 费用。
+
+    只写不改、不清理（永久保留）。band 记录计费时刻的真实时段；
+    单价快照记录实付单价——即使峰时价未配置回退闲价，历史账单也可解释。
+    """
+    BAND_PEAK = "peak"
+    BAND_OFFPEAK = "offpeak"
+    BANDS = ((BAND_PEAK, "高峰"), (BAND_OFFPEAK, "空闲"))
+
+    user = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="deepseek_usage_logs",
+        help_text="可空：后台批量翻译等无用户上下文的调用"
+    )
+    model = models.CharField(max_length=50, help_text="归一化后的规范模型名")
+    band = models.CharField(
+        max_length=10, choices=BANDS,
+        help_text="计费时刻的真实时段（即使价格回退闲价也记 peak）"
+    )
+    prompt_tokens = models.IntegerField(
+        validators=[MinValueValidator(0)],
+        help_text="输入 tokens（含缓存命中部分）",
+    )
+    cached_tokens = models.IntegerField(
+        default=0, validators=[MinValueValidator(0)],
+        help_text="其中缓存命中的 tokens",
+    )
+    output_tokens = models.IntegerField(
+        validators=[MinValueValidator(0)],
+        help_text="输出 tokens（SDK completion_tokens）",
+    )
+    billed_cache_hit_price = models.DecimalField(
+        max_digits=8, decimal_places=4, help_text="本笔实付单价快照（元/百万 tokens）"
+    )
+    billed_cache_miss_price = models.DecimalField(
+        max_digits=8, decimal_places=4, help_text="本笔实付单价快照（元/百万 tokens）"
+    )
+    billed_output_price = models.DecimalField(
+        max_digits=8, decimal_places=4, help_text="本笔实付单价快照（元/百万 tokens）"
+    )
+    cost = models.DecimalField(
+        max_digits=14, decimal_places=10,
+        help_text="费用（元）；4 位价格 × 整数 tokens ÷ 1e6 恰好 10 位小数精确"
+    )
+    billed_at = models.DateTimeField(help_text="计费时刻（响应完成时刻，北京时间 aware）")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.model} {self.band} ¥{self.cost}"
+
+    class Meta:
+        verbose_name = "DeepSeek Usage Log"
+        verbose_name_plural = "DeepSeek Usage Logs"
+        ordering = ["-billed_at"]
+        indexes = [
+            models.Index(fields=["billed_at"]),
+            models.Index(fields=["model", "band"]),
+        ]
 
 
 # ==================== 积分系统模型 ====================

@@ -2,10 +2,13 @@ from django.contrib import admin
 from django.contrib.admin import AdminSite
 from django.shortcuts import redirect
 from django.urls import path
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
+from decimal import Decimal
 from .models import (
     Category, Item, ReviewDay,
-    UserPoints, PointHistory, UserPointsConfig, PointRedemption, UserStreak
+    UserPoints, PointHistory, UserPointsConfig, PointRedemption, UserStreak,
+    ModelPricing, DeepSeekUsageLog
 )
 from .forms import CategoryAdminForm, ItemAdminForm, ReviewDayAdminForm
 from django.core.exceptions import ValidationError
@@ -380,5 +383,97 @@ admin.site.register(PointHistory, PointHistoryAdmin)
 admin.site.register(UserPointsConfig, UserPointsConfigAdmin)
 admin.site.register(PointRedemption, PointRedemptionAdmin)
 admin.site.register(UserStreak, UserStreakAdmin)
+
+
+# ==================== DeepSeek 峰谷计费 Admin ====================
+
+class ModelPricingAdmin(admin.ModelAdmin):
+    """模型峰谷价格表：可编辑，保存时自动刷新 pricing_updated_at（调价留痕）"""
+    list_display = ('model_name', 'cache_hit_display', 'cache_miss_display',
+                    'output_display', 'pricing_updated_at', 'price_source')
+    readonly_fields = ('pricing_updated_at',)
+    search_fields = ('model_name',)
+    fieldsets = (
+        ('模型', {
+            'fields': ('model_name', 'price_source')
+        }),
+        ('闲时价（元/百万 tokens）', {
+            'fields': ('offpeak_cache_hit_price', 'offpeak_cache_miss_price', 'offpeak_output_price')
+        }),
+        ('高峰价（元/百万 tokens，三列全为 0 表示不启用峰时计费）', {
+            'fields': ('peak_cache_hit_price', 'peak_cache_miss_price', 'peak_output_price')
+        }),
+        ('元数据', {
+            'fields': ('pricing_updated_at',),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def save_model(self, request, obj, form, change):
+        # 官方调价后管理员改价时自动留痕
+        obj.pricing_updated_at = timezone.now()
+        super().save_model(request, obj, form, change)
+
+    def cache_hit_display(self, obj):
+        from .billing import display_price_pair
+        return format_html(
+            "{}", display_price_pair(
+                obj.offpeak_cache_hit_price, obj.peak_cache_hit_price, obj.peak_enabled
+            )
+        )
+    cache_hit_display.short_description = '输入·缓存命中'
+
+    def cache_miss_display(self, obj):
+        from .billing import display_price_pair
+        return format_html(
+            "{}", display_price_pair(
+                obj.offpeak_cache_miss_price, obj.peak_cache_miss_price, obj.peak_enabled
+            )
+        )
+    cache_miss_display.short_description = '输入·缓存未命中'
+
+    def output_display(self, obj):
+        from .billing import display_price_pair
+        return format_html(
+            "{}", display_price_pair(
+                obj.offpeak_output_price, obj.peak_output_price, obj.peak_enabled
+            )
+        )
+    output_display.short_description = '输出'
+
+
+class DeepSeekUsageLogAdmin(BaseAdmin):
+    """DeepSeek 用量流水：只读审计，普通用户仅见自己的流水（同 PointHistoryAdmin 风格）"""
+    list_display = ('user', 'model', 'band_display', 'prompt_tokens', 'cached_tokens',
+                    'output_tokens', 'cost_display', 'billed_at')
+    list_filter = ('band', 'model', 'billed_at')
+    search_fields = ('user__username', 'model')
+    date_hierarchy = 'billed_at'
+
+    def band_display(self, obj):
+        return obj.get_band_display()
+    band_display.short_description = '时段'
+
+    def cost_display(self, obj):
+        # 展示 4 位小数（存储 10 位精确）
+        return f"¥{obj.cost.quantize(Decimal('0.0001')):f}"
+    cost_display.short_description = '费用（元）'
+
+    def has_add_permission(self, request):
+        # 流水由系统写入，不允许手工添加
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        # 审计流水不可修改
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        # 审计流水不可删除（永久保留）
+        return False
+
+
+# 注册计费模型
+admin.site.register(ModelPricing, ModelPricingAdmin)
+admin.site.register(DeepSeekUsageLog, DeepSeekUsageLogAdmin)
 
 

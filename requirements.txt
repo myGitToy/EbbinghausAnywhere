@@ -6,3 +6,4 @@ requests
 openpyxl
 markdown
 openai>=1.0.0
+tzdata  # Windows 无系统 IANA 时区库，zoneinfo('Asia/Shanghai') 峰谷计费依赖此包

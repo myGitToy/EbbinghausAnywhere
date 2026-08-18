@@ -12,9 +12,11 @@
 | **上下文长度** | 1M tokens | 1M tokens |
 | **最大输出** | 384K tokens | 384K tokens |
 | **思考模式** | 支持开关（默认开启） | 支持开关（默认开启） |
-| **输入价格（缓存命中）** | ¥0.2/百万tokens | ¥1/百万tokens |
-| **输入价格（缓存未命中）** | ¥1/百万tokens | ¥12/百万tokens |
-| **输出价格** | ¥2/百万tokens | ¥24/百万tokens |
+| **输入价格（缓存命中）** | ¥0.05 空闲 / ¥0.10 高峰 | ¥0.15 空闲 / ¥0.30 高峰 |
+| **输入价格（缓存未命中）** | ¥1.5 空闲 / ¥3.0 高峰 | ¥4.5 空闲 / ¥9.0 高峰 |
+| **输出价格** | ¥4.5 空闲 / ¥9.0 高峰 | ¥13.5 空闲 / ¥27.0 高峰 |
+
+> **峰谷分时定价（2026-08-17 起生效）**：高峰时段为北京时间 9:00–12:00、14:00–18:00（每天适用，官方不区分周末），高峰价格为空闲的 2 倍。单位：元/百万 tokens。本项目的计费实现见 `EAW/pricing.py`（时段判定与计费公式）、`EAW/billing.py`（用量流水）与 `ModelPricing` 价格表（admin 可改价留痕）。
 
 ### 旧模型名称映射（向后兼容）
 
@@ -197,7 +199,9 @@ messages.append(response.choices[0].message)
 
 ## 6. 定价对比（旧 vs 新）
 
-| 项目 | deepseek-chat (旧) | deepseek-v4-flash (新) | deepseek-v4-pro (新) |
+> ⚠️ **历史价格表**：下表为 V4 上线时（2026-02）的价格。官方已于 **2026-08-17** 实施峰谷分时定价且闲时价也上调，当前生效价格见本文 §1 与 `ModelPricing` 价格表。
+
+| 项目 | deepseek-chat (旧) | deepseek-v4-flash（V4 上线时） | deepseek-v4-pro（V4 上线时） |
 |------|--------------------|-----------------------|---------------------|
 | 输入（缓存命中） | ¥0.2 | ¥0.2 | ¥1 |
 | 输入（缓存未命中） | ¥2 | **¥1**（降低50%） | ¥12 |
@@ -214,7 +218,7 @@ messages.append(response.choices[0].message)
 - [ ] 添加推理强度：`reasoning_effort="high"` 或 `"max"`
 - [ ] 思考模式下**排除** `temperature`/`top_p`/`presence_penalty`/`frequency_penalty`
 - [ ] 更新 `max_tokens` 上限（从 8K 提升至 384K）
-- [ ] 更新定价计算逻辑（使用 `input_price_cached`/`input_price_uncached`/`output_price`）
+- [x] 更新定价计算逻辑（`EAW/pricing.py` 峰谷时段判定 + 缓存分段计费、`EAW/billing.py` 用量流水、`ModelPricing` 价格表迁移 0015，支持 2026-08-17 峰谷新价体系）
 - [ ] 处理响应中的 `reasoning_content` 字段（多轮对话需回传）
 - [ ] 更新配置文件和环境变量
 - [ ] 更新 UI 下拉框和模型选择器

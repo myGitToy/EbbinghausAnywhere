@@ -11,6 +11,9 @@ admin.site.index_title = "Manage User Data"
 
 urlpatterns = [
     path('', views.home, name='home'), # Home view
+    # study-hub 门户 OTT 桥接（Phase 5.3）
+    path('sso/bridge/', views.sso_bridge, name='sso_bridge'),
+    path('sso/logout/', views.sso_logout, name='sso_logout'),
     # 用户认证相关的URL
     # path('accounts/login/', auth_views.LoginView.as_view(), name='login'),  # 登录
     path('accounts/login/', views.custom_login, name='login'),

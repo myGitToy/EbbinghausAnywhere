@@ -2283,3 +2283,58 @@ def get_points_balance_api(request):
 
 
 
+
+
+# ---------- study-hub 门户 OTT 桥接（Phase 5.3，ADR-0003 协议）----------
+
+from . import sso as sso_core
+from django.contrib.sessions.models import Session
+from django.utils import timezone as dj_timezone
+
+
+def sso_bridge(request):
+    """门户携 ?ott= 跳入：换票 → 匹配/建影子用户（不可用密码）→ Django 会话 → 首页。"""
+    ott = request.GET.get('ott', '')
+    payload, reason = sso_core.consume_ott(ott)
+    if payload is None:
+        logger.warning('SSO 桥接失败：%s', reason)
+        return redirect(f"{reverse('login')}?sso={reason}")
+    user, created = User.objects.get_or_create(username=payload['username'])
+    if created:
+        # 影子用户：占位不可用密码，本地账密登录不可用，独立账号体系不受影响
+        user.set_unusable_password()
+        user.save(update_fields=['password'])
+        logger.info('SSO 影子用户已创建：%s', user.username)
+    login(request, user)
+    logger.info('SSO 登录成功：%s', user.username)
+    return redirect('home')
+
+
+@csrf_exempt
+def sso_logout(request):
+    """服务间全局登出（study-hub auth 调用，appSecret 即凭证，Phase 5.4）。
+
+    POST {appSecret, username} → 删除该用户在本应用的全部会话，返回删除数。
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST only'}, status=405)
+    try:
+        body = json.loads(request.body or '{}')
+    except ValueError:
+        return JsonResponse({'error': 'body 应为 JSON'}, status=400)
+    expected = sso_core.study_hub_secret()
+    if not expected or body.get('appSecret') != expected:
+        return JsonResponse({'error': 'appSecret 不匹配'}, status=403)
+    username = body.get('username')
+    if not isinstance(username, str) or not username:
+        return JsonResponse({'error': 'username 必填'}, status=400)
+    user = User.objects.filter(username=username).first()
+    if user is None:
+        return JsonResponse({'ok': True, 'deleted': 0})
+    deleted = 0
+    for session in Session.objects.filter(expire_date__gte=dj_timezone.now()):
+        if session.get_decoded().get('_auth_user_id') == str(user.pk):
+            session.delete()
+            deleted += 1
+    logger.info('SSO 全局登出：%s（删除 %d 个会话）', username, deleted)
+    return JsonResponse({'ok': True, 'deleted': deleted})

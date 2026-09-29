@@ -34,12 +34,18 @@ SECRET_KEY = env('SECRET_KEY')
 
 ALLOWED_HOSTS = ['*']
 
-# CORS 配置
-CORS_ALLOW_ALL_ORIGINS = True  # 允许所有来源（开发环境）
-CORS_ALLOW_CREDENTIALS = True  # 允许携带认证信息
+# CORS 配置（Phase 5.3 收紧：全开放 → 门户白名单）
+CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOWED_ORIGINS = [
+    "http://192.168.1.155:8092",  # study-hub 门户
+    "http://127.0.0.1:8092",
+    "http://localhost:8092",
+]
 CSRF_TRUSTED_ORIGINS = [
     "http://127.0.0.1:8000",
     "http://localhost:8000",
+    "http://192.168.1.155:8092",  # study-hub 门户（Phase 5.3）
 ]
 
 
@@ -199,5 +205,4 @@ try:
 except ImportError:
     pass
 
-# 开发方便：允许所有源进行跨域请求（生产环境请改为精确白名单）
-CORS_ALLOW_ALL_ORIGINS = True
+# CORS 白名单已在上方定义（Phase 5.3 收紧，去掉 local_settings 之后的全开放覆盖）

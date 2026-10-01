@@ -27,15 +27,15 @@
                         {% if object.category.name == '单词' %}
                             {% if object.uk_phonetic or object.us_phonetic %}
                                 <div class="mb-3 p-2 bg-light rounded">
-                                    <div class="d-flex align-items-center">
-                                        <label for="tts-method-select" class="me-2 mb-0">
+                                    <div class="d-flex align-items-center flex-wrap gap-2">
+                                        <label for="tts-method-select" class="mb-0">
                                             <i class="fa fa-cog text-primary"></i> 发音方式：
                                         </label>
                                         <select id="tts-method-select" class="form-select form-select-sm" style="width: auto;">
                                             <option value="google">🔊 Google TTS（在线）</option>
                                             <option value="browser">🎧 浏览器 TTS（离线）</option>
                                         </select>
-                                        <small class="text-muted ms-2">
+                                        <small class="text-muted d-none d-md-inline">
                                             <i class="fa fa-info-circle"></i> 选择后将自动更新下方图标
                                         </small>
                                     </div>
@@ -51,8 +51,8 @@
                                     <div>
                                         <!-- 美式发音 -->
                                         {% if object.us_phonetic %}
-                                            <div class="d-flex align-items-center mb-2">
-                                                <span class="badge bg-info me-2" style="min-width: 150px;">美 [{{ object.us_phonetic }}]</span>
+                                            <div class="d-flex align-items-center flex-wrap gap-1 mb-2">
+                                                <span class="badge bg-info">美 [{{ object.us_phonetic }}]</span>
                                                 <button class="btn btn-sm btn-link p-0 me-1 tts-play-btn" onclick="playAudioWithAccent('{{ object.item }}', 'us')" title="播放美式发音">
                                                     <i class="fa fa-volume-up text-primary"></i>
                                                 </button>
@@ -61,8 +61,8 @@
                                         {% endif %}
                                         <!-- 英式发音 -->
                                         {% if object.uk_phonetic %}
-                                            <div class="d-flex align-items-center">
-                                                <span class="badge bg-info me-2" style="min-width: 150px;">英 [{{ object.uk_phonetic }}]</span>
+                                            <div class="d-flex align-items-center flex-wrap gap-1">
+                                                <span class="badge bg-info">英 [{{ object.uk_phonetic }}]</span>
                                                 <button class="btn btn-sm btn-link p-0 me-1 tts-play-btn" onclick="playAudioWithAccent('{{ object.item }}', 'uk')" title="播放英式发音">
                                                     <i class="fa fa-volume-up text-primary"></i>
                                                 </button>

@@ -1028,7 +1028,9 @@ def ReviewView(request, year, month, day):
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
         return HttpResponse(render_to_string('review_day.html', context, request))
 
-    return render(request, 'review_day.html', context)
+    # 非 AJAX 直链：302 回复习首页并带上日期（review_day.html 是无头片段，
+    # 直接渲染会得到无 viewport/无样式的裸页——#81）
+    return redirect(f"{reverse('review-home')}?date={reviewDate.isoformat()}&per_page={per_page}")
 
 
 @login_required

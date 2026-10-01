@@ -48,15 +48,15 @@
     <div class="container">
         <div class="row justify-content-center">
             <div class="col-12 col-md-8">
-                <div class="alert alert-warning m-0 d-flex align-items-center justify-content-between" role="alert">
-                    <div class="d-flex align-items-center">
+                <div class="alert alert-warning m-0 d-flex align-items-center flex-wrap gap-2" role="alert">
+                    <div class="d-flex align-items-center me-auto">
                         <span>已选择 <strong id="selectedCount">0</strong> 项</span>
                     </div>
-                    <div class="d-flex gap-2">
+                    <div class="d-flex flex-wrap gap-2">
                         <button class="btn btn-danger btn-sm" id="batchDeleteBtn">
                             <i class="bi bi-trash"></i> 批量删除
                         </button>
-                        <select id="moveToCategorySelect" class="form-select form-select-sm" style="width: auto;">
+                        <select id="moveToCategorySelect" class="form-select form-select-sm" style="width: auto; max-width: 60vw;">
                             <option value="">移动到分类...</option>
                             {% for stat in category_stats %}
                                 <option value="{{ stat.category__id }}">{{ stat.category__name }}</option>

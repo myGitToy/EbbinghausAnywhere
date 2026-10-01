@@ -1,10 +1,8 @@
-<style>
-body {
-    display: flex;
-    flex-direction: column;
-    background-color: #f8f9fa; /* 确保背景颜色一致 */
-    min-height: 100vh; /* 页面高度至少为视口高度 */
-}
+/* 主样式表（#81 清理：曾误以 HTML style 标签字面包裹，导致首尾相邻规则被
+   CSS 解析器静默丢弃；已删除标签与三条从未生效的死规则——body 覆盖规则
+   （Bootstrap d-flex/flex-column/min-vh-100 已等价）、.card 768px 90% 宽
+   （被下方 .card{width:100%} 源序覆盖）、#services .row 单行横滚版
+   （其列宽规则仍保留，页面行为不变）） */
 main {
     flex-grow: 1; /* 主体内容区域可扩展，填充剩余空间 */
 }
@@ -22,9 +20,6 @@ main {
     header {
         background-image: none;
         height: auto;
-    }
-    .card {
-        width: 90%;
     }
 }
 /* 默认样式 */
@@ -82,7 +77,8 @@ main {
         font-size: 0.875rem;
     }
     .container {
-        padding: 0 0.5rem;
+        /* 与 BS5 gutter(0.75rem) 对齐：小于它会被 .row 负 margin 拖出 4px 横向滚动（#81） */
+        padding: 0 0.75rem;
     }
     footer.footer {
         padding: 0.5rem 0;
@@ -296,28 +292,17 @@ a.btn.rounded-circle:hover {
     .card-header h4 {
         font-size: 1.2rem;
     }
-    
+
     .card-body {
         padding: 1.5rem !important;
     }
-    
+
     .content-block {
         padding: 1rem !important;
     }
 }
-</style>
 
-/* 将首页服务项放成一行，较窄屏幕允许横向滚动 */
-#services .row {
-    display: flex;
-    flex-wrap: nowrap; /* 不换行 */
-    justify-content: center;
-    gap: 1.25rem;
-    overflow-x: auto; /* 小屏幕时横向滚动 */
-    -webkit-overflow-scrolling: touch;
-    padding-bottom: 0.5rem;
-}
-
+/* 首页服务项列宽（32%×3 桌面 / 50%×2 窄屏；#81 清理：不再强行单行横滚） */
 #services .row .col-6.col-md-4 {
     flex: 0 0 32%;
     max-width: 32%;

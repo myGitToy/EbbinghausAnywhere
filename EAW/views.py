@@ -57,14 +57,25 @@ logger = logging.getLogger(__name__)
 # Create your views here.
 from .models import Item, Proficiency, Category, ReviewDay
 
+# SSO 跳回登录页的原因 → 可读提示（#80：换票失败不再静默）
+SSO_LOGIN_NOTICES = {
+    'unconfigured': '单点登录未启用（未配置 STUDY_HUB_APP_SECRET）。',
+    'invalid': '登录令牌无效或已过期，请从门户重新进入。',
+    'rejected': '单点登录凭据被拒，请联系管理员检查应用注册。',
+    'unreachable': '门户暂时不可达，请稍后重试。',
+    'bind_invalid': '绑定请求无效，请从门户重新进入。',
+    'bind_expired': '绑定超时（10 分钟），请从门户重新进入。',
+}
+
+
 def custom_login(request):
     if request.method == 'POST':
         username = request.POST.get('username')
         password = request.POST.get('password')
-        
+
         # 使用 authenticate 进行身份验证
         user = authenticate(request, username=username, password=password)
-        
+
         if user is not None:
             # 如果用户验证通过，则登录并重定向
             login(request, user)
@@ -73,7 +84,20 @@ def custom_login(request):
             # 如果用户名或密码错误，使用消息框架显示错误信息
             messages.error(request, "用户名或密码无效，请检查后重试。")
 
-    return render(request, 'registration/login.html')
+    return render(request, 'registration/login.html',
+                  {'sso_error': SSO_LOGIN_NOTICES.get(request.GET.get('sso', ''))})
+
+
+def _provision_new_user(user):
+    """新账号默认数据初始化：本地注册与 SSO 影子号共用（Public 组 / 默认分类 / 复习曲线）。"""
+    public_group, _created = Group.objects.get_or_create(name='Public')
+    user.groups.add(public_group)
+    user.is_staff = True
+    user.save()
+    Category.objects.create(user=user, name="单词", sort_order=1, is_default=True)
+    ReviewDay.objects.bulk_create(
+        [ReviewDay(user=user, day=day) for day in [1, 2, 4, 7, 15, 30, 90, 180, 365]]
+    )
 
 
 def register(request):
@@ -98,18 +122,8 @@ def register(request):
                 user = form.save()
                 username = form.cleaned_data.get('username')
 
-                # 加入 Public 组
-                public_group, created = Group.objects.get_or_create(name='Public')
-                user.groups.add(public_group)
-                user.is_staff = True
-                user.save()
-
-                # 创建默认类别和复习计划
-                Category.objects.create(user=user, name="单词", sort_order=1, is_default=True)
-                review_days = [1, 2, 4, 7, 15, 30, 90, 180, 365]
-                ReviewDay.objects.bulk_create(
-                    [ReviewDay(user=user, day=day) for day in review_days]
-                )
+                # 默认组/分类/复习曲线初始化（与 SSO 影子号共用）
+                _provision_new_user(user)
 
                 messages.success(request, f'Account {username} created successfully!')
                 return redirect('login')
@@ -2286,35 +2300,124 @@ def get_points_balance_api(request):
 
 
 # ---------- study-hub 门户 OTT 桥接（Phase 5.3，ADR-0003 协议）----------
+# #80 起对齐联邦账号状态机（airlinesim #510 证明式绑定语义）：
+# 已绑定 → 直登；未绑定+无同名 → 建影子号；未绑定+同名 → 冲突出绑定票。
+# 绝不按用户名自动合并（门户开放注册，按名合并 = 同名接管漏洞）。
 
 from . import sso as sso_core
+from .models import UserProfile
 from django.contrib.sessions.models import Session
+from django.contrib.auth.validators import UnicodeUsernameValidator
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.utils import timezone as dj_timezone
 
 
+def _hub_login(request, user):
+    login(request, user)
+    logger.info('SSO 登录成功：%s', user.username)
+    return redirect('home')
+
+
 def sso_bridge(request):
-    """门户携 ?ott= 跳入：换票 → 匹配/建影子用户（不可用密码）→ Django 会话 → 首页。"""
+    """门户携 ?ott= 跳入：换票 → 三分支状态机 → Django 会话 → 首页。"""
     ott = request.GET.get('ott', '')
     payload, reason = sso_core.consume_ott(ott)
     if payload is None:
         logger.warning('SSO 桥接失败：%s', reason)
         return redirect(f"{reverse('login')}?sso={reason}")
-    user, created = User.objects.get_or_create(username=payload['username'])
-    if created:
-        # 影子用户：占位不可用密码，本地账密登录不可用，独立账号体系不受影响
-        user.set_unusable_password()
-        user.save(update_fields=['password'])
-        logger.info('SSO 影子用户已创建：%s', user.username)
-    login(request, user)
-    logger.info('SSO 登录成功：%s', user.username)
-    return redirect('home')
+    hub_user_id, username = payload['userId'], payload['username']
+
+    # 分支一：已绑定该门户身份 → 直登（门户改名则同步本地用户名，数据不断链）
+    profile = UserProfile.objects.filter(
+        study_hub_user_id=hub_user_id).select_related('user').first()
+    if profile is not None:
+        user = profile.user
+        if user.username != username:
+            old_name = user.username
+            user.username = username
+            user.save(update_fields=['username'])
+            logger.info('SSO 门户改名同步：%s → %s', old_name, username)
+        return _hub_login(request, user)
+
+    # 分支二：未绑定但本地有同名账号 → 冲突，签 10 分钟绑定票走证明式绑定
+    if User.objects.filter(username=username).exists():
+        ticket = sso_core.sign_bind_ticket(hub_user_id, username)
+        logger.info('SSO 同名冲突，转绑定页：username=%s', username)
+        return redirect(f"{reverse('sso_bind')}?t={ticket}")
+
+    # 分支三：全新 → 建影子号（占位不可用密码，本地账密登录不可用）+ 绑定 + 默认数据
+    user = User.objects.create_user(username=username)
+    UserProfile.objects.create(user=user, study_hub_user_id=hub_user_id)
+    _provision_new_user(user)
+    logger.info('SSO 影子用户已创建：%s', username)
+    return _hub_login(request, user)
+
+
+def _bind_page(request, ticket, username):
+    return render(request, 'sso_bind.html', {'ticket': ticket, 'username': username})
+
+
+def sso_bind(request):
+    """同名冲突绑定页（#510 证明式绑定）：验本地密码绑定既有账号，或换名新建。
+
+    绑定票 10 分钟有效、不落库；POST 成功即登录。
+    抢先绑定（另一设备先完成）时不再出表单，直接登录不断链。
+    """
+    token = request.GET.get('t', '') or request.POST.get('t', '')
+    payload, reason = sso_core.load_bind_ticket(token)
+    if payload is None:
+        return redirect(f"{reverse('login')}?sso=bind_{reason}")
+    hub_user_id, username = payload['userId'], payload['username']
+
+    profile = UserProfile.objects.filter(
+        study_hub_user_id=hub_user_id).select_related('user').first()
+    if profile is not None:
+        return _hub_login(request, profile.user)
+
+    if request.method == 'GET':
+        return _bind_page(request, token, username)
+
+    mode = request.POST.get('mode')
+
+    if mode == 'bind':
+        user = authenticate(request, username=username,
+                            password=request.POST.get('password', ''))
+        if user is None:
+            messages.error(request, '本地账号密码不正确，未完成绑定。')
+            return _bind_page(request, token, username)
+        if UserProfile.objects.filter(user=user).exists():
+            messages.error(request, '该本地账号已绑定其他门户账号，请换名新建。')
+            return _bind_page(request, token, username)
+        UserProfile.objects.create(user=user, study_hub_user_id=hub_user_id)
+        logger.info('SSO 证明式绑定完成：%s ← 门户 userId %s', username, hub_user_id)
+        return _hub_login(request, user)
+
+    if mode == 'rename':
+        new_username = (request.POST.get('new_username') or '').strip()
+        try:
+            UnicodeUsernameValidator()(new_username)
+        except DjangoValidationError:
+            messages.error(request, '新用户名只能包含字母、数字和 @/./+/-/_ 。')
+            return _bind_page(request, token, username)
+        if not new_username or User.objects.filter(username=new_username).exists():
+            messages.error(request, '该用户名已被占用，请换一个。')
+            return _bind_page(request, token, username)
+        user = User.objects.create_user(username=new_username)
+        UserProfile.objects.create(user=user, study_hub_user_id=hub_user_id)
+        _provision_new_user(user)
+        logger.info('SSO 换名新建：%s（门户 %s 的影子号）', new_username, username)
+        return _hub_login(request, user)
+
+    messages.error(request, '未知操作，请重试。')
+    return _bind_page(request, token, username)
 
 
 @csrf_exempt
 def sso_logout(request):
     """服务间全局登出（study-hub auth 调用，appSecret 即凭证，Phase 5.4）。
 
-    POST {appSecret, username} → 删除该用户在本应用的全部会话，返回删除数。
+    POST {appSecret, username, userId?} → 删除该用户在本应用的全部会话，返回删除数。
+    userId 为可选字段：有则优先按联邦绑定定位（#80，中心侧暂未发送、向前兼容）。
     """
     if request.method != 'POST':
         return JsonResponse({'error': 'POST only'}, status=405)
@@ -2325,10 +2428,19 @@ def sso_logout(request):
     expected = sso_core.study_hub_secret()
     if not expected or body.get('appSecret') != expected:
         return JsonResponse({'error': 'appSecret 不匹配'}, status=403)
-    username = body.get('username')
-    if not isinstance(username, str) or not username:
-        return JsonResponse({'error': 'username 必填'}, status=400)
-    user = User.objects.filter(username=username).first()
+
+    user = None
+    hub_user_id = body.get('userId')
+    if isinstance(hub_user_id, str) and hub_user_id:
+        profile = UserProfile.objects.filter(
+            study_hub_user_id=hub_user_id).select_related('user').first()
+        if profile is not None:
+            user = profile.user
+    if user is None:
+        username = body.get('username')
+        if not isinstance(username, str) or not username:
+            return JsonResponse({'error': 'username 必填'}, status=400)
+        user = User.objects.filter(username=username).first()
     if user is None:
         return JsonResponse({'ok': True, 'deleted': 0})
     deleted = 0
@@ -2336,5 +2448,5 @@ def sso_logout(request):
         if session.get_decoded().get('_auth_user_id') == str(user.pk):
             session.delete()
             deleted += 1
-    logger.info('SSO 全局登出：%s（删除 %d 个会话）', username, deleted)
+    logger.info('SSO 全局登出：%s（删除 %d 个会话）', user.username, deleted)
     return JsonResponse({'ok': True, 'deleted': deleted})

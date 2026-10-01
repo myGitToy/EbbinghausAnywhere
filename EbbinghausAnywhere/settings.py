@@ -32,7 +32,8 @@ environ.Env.read_env(BASE_DIR / '.env')
 # SECRET_KEY 必须通过环境变量设置（Docker 部署时由 docker-compose.yml 注入）
 SECRET_KEY = env('SECRET_KEY')
 
-ALLOWED_HOSTS = ['*']
+# 部署时收紧为实际访问地址（如 ALLOWED_HOSTS=192.168.1.155,localhost），开发默认全开
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['*'])
 
 # CORS 配置（Phase 5.3 收紧：全开放 → 门户白名单）
 CORS_ALLOW_ALL_ORIGINS = False

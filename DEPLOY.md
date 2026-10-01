@@ -60,3 +60,31 @@ docker-compose -f docker-compose.prod.yml restart web
 - 强烈建议不要在生产中使用 SQLite；如流量或并发增加，请切换到 PostgreSQL 并使用外部持久化卷或托管数据库。  
 - 不要把 `deploy/.env` 或 `deploy/local_settings.py` 提交到代码仓库；将其加入 `.gitignore`。  
 - 若使用反向代理（如 nginx），请根据需要在 `docker-compose.prod.yml` 中添加 nginx 服务并挂载证书。  
+
+---
+
+## 实际部署记录（2026-10-01，study-hub #72）
+
+- **部署目录**：`~/ewa-prod/`（独立于仓库，含 `docker-compose.prod.yml` 副本 + `deploy/` + `data/` + `staticfiles/` + `media/`），仓库工作区零运行时污染；
+- **端口**：宿主机 **8095** → 容器 8000（原规划 8000 已被 HMU 后端占用）；
+  - `deploy/local_settings.py` 覆盖 `CSRF_TRUSTED_ORIGINS`（8095 各 origin + 门户 8092）——绑定页表单 POST 需要；
+  - study-hub 侧 `FederatedApp.ewa` 的 entryUrl/bridgeUrl 已同步改为 `http://192.168.1.155:8095/sso/bridge/`；
+- **`deploy/.env`**：`SECRET_KEY`（随机）、`STUDY_HUB_URL=http://192.168.1.155:8090`、`STUDY_HUB_APP_SECRET`（= study-hub `data/FEDERATED-APPS.txt` 登记值）、`ALLOWED_HOSTS=192.168.1.155,localhost,127.0.0.1`（DEBUG 默认 False）。
+
+### 换机重建步骤（镜像不推 Docker Hub，本地构建）
+
+```bash
+# 1. 源码 + 本目录的 data/db.sqlite3（每日随 study-hub 备份到 ewa-* 快照）
+git clone https://github.com/myGitToy/EbbinghausAnywhere.git && cd EbbinghausAnywhere
+docker build -t ghuiqiao711/ewa:latest .
+# 2. 恢复 ~/ewa-prod 目录结构（deploy/.env 与 local_settings.py 需从备份/密码管理器取回）
+# 3. 启动：cd ~/ewa-prod && docker compose -f docker-compose.prod.yml up -d
+```
+
+### 日常更新
+
+```bash
+cd ~/repos/EbbinghausAnywhere && git pull && docker build -t ghuiqiao711/ewa:latest .
+cp ~/ewa-prod/data/db.sqlite3 ~/ewa-prod/data/db.sqlite3.bak
+cd ~/ewa-prod && docker compose -f docker-compose.prod.yml up -d --force-recreate
+```

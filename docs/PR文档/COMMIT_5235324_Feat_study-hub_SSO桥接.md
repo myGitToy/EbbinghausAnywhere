@@ -1,4 +1,4 @@
-# PR #15 · study-hub 门户 SSO 桥接 + CORS 收紧
+# 直接提交 5235324 · study-hub 门户 SSO 桥接 + CORS 收紧（未开 PR，随提交文档）
 
 - 日期：2026-09-30 ｜ 状态：已合并
 - 关联：study-hub 仓库 issue #37/#39（Phase 5.2/5.3）、ADR-0003（OTT 一次性令牌 SSO）

@@ -31,10 +31,10 @@
 
     // 加载单词列表
     function loadItems(categoryId) {
-        const tbody = document.getElementById('itemTableBody');
+        const grid = document.getElementById('itemCardGrid');
 
         // 显示加载状态
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center">加载中...</td></tr>';
+        grid.innerHTML = '<div class="col-12 text-center text-muted py-4">加载中...</div>';
 
         // 调用 item_list 视图，它会检测 AJAX 请求并返回 JSON
         fetch(`/list/?category=${categoryId}`, {
@@ -57,27 +57,40 @@
             })
             .catch(error => {
                 console.error('Error loading items:', error);
-                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">加载失败，请刷新页面重试</td></tr>';
+                grid.innerHTML = '<div class="col-12 text-center text-danger py-4">加载失败，请刷新页面重试</div>';
             });
     }
 
-    // 渲染单词列表
+    // 渲染单词列表（#82：卡片网格，与 list.html 服务端渲染结构一致）
     function renderItems(items) {
-        const tbody = document.getElementById('itemTableBody');
+        const grid = document.getElementById('itemCardGrid');
 
         if (items.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center">该分类下暂无单词</td></tr>';
+            grid.innerHTML = '<div class="col-12 text-center text-muted py-4">该分类下暂无单词</div>';
             return;
         }
 
-        tbody.innerHTML = items.map(item => `
-            <tr data-item-id="${item.id}">
-                <td><input type="checkbox" class="item-checkbox" data-id="${item.id}"></td>
-                <td><a href="${item.detail_url}" class="text-primary">${escapeHtml(item.item)}</a></td>
-                <td>${escapeHtml(item.category)}</td>
-                <td>${formatDate(item.inputDate)}</td>
-                <td>${item.next_review_date ? formatDate(item.next_review_date) : '未设置'}</td>
-            </tr>
+        grid.innerHTML = items.map(item => `
+            <div class="col-12 col-sm-6 col-lg-4">
+                <div class="card h-100 item-card shadow-sm" data-item-id="${item.id}">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <input type="checkbox" class="item-checkbox" data-id="${item.id}" aria-label="选择 ${escapeHtml(item.item)}">
+                            <span class="badge bg-secondary text-truncate ms-2" style="max-width: 60%;">${escapeHtml(item.category)}</span>
+                        </div>
+                        <h5 class="mb-1"><a href="${item.detail_url}" class="text-decoration-none">${escapeHtml(item.item)}</a></h5>
+                        ${(item.us_phonetic || item.uk_phonetic) ? `
+                        <div class="text-muted small mb-2">
+                            ${item.us_phonetic ? '美 [' + escapeHtml(item.us_phonetic) + '] ' : ''}
+                            ${item.uk_phonetic ? '英 [' + escapeHtml(item.uk_phonetic) + ']' : ''}
+                        </div>` : ''}
+                        <div class="small text-muted">
+                            <div><i class="bi bi-calendar-plus me-1"></i>录入 ${formatDate(item.inputDate)}</div>
+                            <div><i class="bi bi-arrow-repeat me-1"></i>下次复习 ${item.next_review_date ? formatDate(item.next_review_date) : '未设置'}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         `).join('');
 
         // 重新绑定复选框事件

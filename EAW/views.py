@@ -312,6 +312,8 @@ def item_list(request):
                 'item': item.item,
                 'category': item.category.name,
                 'category_id': item.category.id,
+                'us_phonetic': item.us_phonetic or '',
+                'uk_phonetic': item.uk_phonetic or '',
                 'inputDate': item.inputDate.isoformat() if item.inputDate else None,
                 'next_review_date': item.next_review_date.isoformat() if item.next_review_date else None,
                 'detail_url': reverse('item-detail', args=[item.id])
@@ -1012,17 +1014,43 @@ def ReviewView(request, year, month, day):
     
     # 排序：额外复习优先，然后按类别和间隔
     review_items_list.sort(key=lambda x: (not x['is_extra'], x['category_name'], x['interval_day']))
-    
+
     # 分页处理
     paginator = Paginator(review_items_list, per_page)
     page_obj = paginator.get_page(page_number)
-    
+
+    # 翻转卡模式数据（#82：纯原始值，经 json_script 交给前端）
+    cycle_map = {0: '第1次复习', 1: '第2次复习', 2: '第3次复习', 4: '第4次复习',
+                 7: '第5次复习', 15: '第6次复习', 30: '第7次复习',
+                 90: '第8次复习', 180: '第9次复习', 365: '第10次复习'}
+    card_items = []
+    for it in page_obj:
+        obj = it['item']
+        card_items.append({
+            'id': obj.id,
+            'word': obj.item,
+            'us_phonetic': obj.us_phonetic or '',
+            'uk_phonetic': obj.uk_phonetic or '',
+            'content': obj.content or '',
+            'category': it['category_name'],
+            'cycle_label': ('额外复习' if it['is_extra'] and not it['is_regular']
+                            else cycle_map.get(it['interval_day'], '第?次复习')),
+            'is_extra': it['is_extra'],
+            'reviewed_today': it['reviewed_today'],
+            'unfamiliar_count': it['unfamiliar_count'],
+            'input_date': obj.inputDate.isoformat() if obj.inputDate else '',
+            'next_after_yes': (it['next_review_after_yes'].isoformat()
+                               if it['next_review_after_yes'] else ''),
+            'detail_url': it['detail_url'],
+        })
+
     # 构建context
     context = {
         'page_obj': page_obj,
         'reviewdate': reviewDate,
         'show_mastered': show_mastered,
-        'per_page': per_page
+        'per_page': per_page,
+        'card_items': card_items,
     }
     
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':

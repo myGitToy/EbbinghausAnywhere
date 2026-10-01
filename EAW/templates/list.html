@@ -75,30 +75,37 @@
         <div class="row justify-content-center">
             <div class="col-12 col-md-8">
                 {% if page_obj %}
-                <!-- Responsive Table -->
-                <div class="table-responsive">
-                    <table class="table table-bordered table-striped align-middle">
-                        <thead class="table-primary">
-                            <tr>
-                                <th scope="col" style="width: 50px;"><input type="checkbox" id="selectAll"></th>
-                                <th scope="col">Item</th>
-                                <th scope="col">Category</th>
-                                <th scope="col">Input Date</th>
-                                <th scope="col">Next Review</th>
-                            </tr>
-                        </thead>
-                        <tbody id="itemTableBody">
-                            {% for item in page_obj %}
-                            <tr data-item-id="{{ item.id }}">
-                                <td><input type="checkbox" class="item-checkbox" data-id="{{ item.id }}"></td>
-                                <td><a href="{% url 'item-detail' item.id %}" class="text-primary">{{ item.item }}</a></td>
-                                <td>{{ item.category.name }}</td>
-                                <td>{{ item.inputDate|date:"M j, Y" }}</td>
-                                <td>{% if item.next_review_date %}{{ item.next_review_date|date:"M j, Y" }}{% else %}未设置{% endif %}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                <!-- 全选本页（#82：表格改卡片网格后，全选从表头移到这里） -->
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <input type="checkbox" id="selectAll" aria-label="全选本页">
+                    <span class="text-muted small">全选本页 · 共 {{ page_obj.paginator.count }} 个</span>
+                </div>
+
+                <!-- 响应式卡片网格（#82）：手机 1 列 / 平板 2 列 / 桌面 3 列 -->
+                <div class="row g-3" id="itemCardGrid">
+                    {% for item in page_obj %}
+                    <div class="col-12 col-sm-6 col-lg-4">
+                        <div class="card h-100 item-card shadow-sm" data-item-id="{{ item.id }}">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <input type="checkbox" class="item-checkbox" data-id="{{ item.id }}" aria-label="选择 {{ item.item }}">
+                                    <span class="badge bg-secondary text-truncate ms-2" style="max-width: 60%;">{{ item.category.name }}</span>
+                                </div>
+                                <h5 class="mb-1"><a href="{% url 'item-detail' item.id %}" class="text-decoration-none">{{ item.item }}</a></h5>
+                                {% if item.us_phonetic or item.uk_phonetic %}
+                                <div class="text-muted small mb-2">
+                                    {% if item.us_phonetic %}美 [{{ item.us_phonetic }}] {% endif %}
+                                    {% if item.uk_phonetic %}英 [{{ item.uk_phonetic }}]{% endif %}
+                                </div>
+                                {% endif %}
+                                <div class="small text-muted">
+                                    <div><i class="bi bi-calendar-plus me-1"></i>录入 {{ item.inputDate|date:"M j, Y" }}</div>
+                                    <div><i class="bi bi-arrow-repeat me-1"></i>下次复习 {% if item.next_review_date %}{{ item.next_review_date|date:"M j, Y" }}{% else %}未设置{% endif %}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
                 </div>
 
                 <!-- Pagination -->
@@ -278,6 +285,30 @@
     border-radius: 8px;
 }
 
+/* #82：手机端批量操作固定底部（拇指热区），桌面保持页内顶栏 */
+@media (max-width: 768px) {
+    #batch-actions .alert {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        margin: 0 !important;
+        border-radius: 0;
+        z-index: 1050;
+        box-shadow: 0 -2px 10px rgba(0, 0, 0, .15);
+    }
+    body { padding-bottom: 72px; } /* 固定条不遮内容 */
+}
+
+/* #82：单词卡片网格 */
+.item-card {
+    transition: transform .15s, box-shadow .15s;
+}
+.item-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .12) !important;
+}
+
 #selectAll {
     width: 18px;
     height: 18px;
@@ -360,5 +391,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/category-management.js' %}"></script>
+<script src="{% static 'js/category-management.js' %}?v=82"></script>
 {% endblock %}

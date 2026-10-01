@@ -394,3 +394,46 @@ a.btn.rounded-circle:hover {
         padding: 0.6rem 0.75rem !important;
     }
 }
+
+/* ==================== 翻转卡模式（#82） ==================== */
+.flashcard {
+    min-height: 320px;
+    border: 2px solid #dee2e6;
+    border-radius: 1rem;
+    padding: 1.5rem;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    background: #fff;
+    transition: border-color .2s, box-shadow .2s;
+    touch-action: pan-y; /* 垂直滚动保留；水平滑动由 JS 判定 */
+}
+.flashcard:active {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 .2rem rgba(13, 110, 253, .15);
+}
+.flashcard.fc-extra {
+    border-color: #ffc107;
+    background: #fffdf0;
+}
+#fcWord {
+    font-size: clamp(2rem, 8vw, 3.5rem);
+    overflow-wrap: anywhere;
+}
+.fc-content {
+    white-space: pre-line;
+    line-height: 1.8;
+    overflow-wrap: anywhere;
+    max-height: 45vh;
+    overflow-y: auto;
+}
+.fc-flip-in {
+    animation: fcFlipIn .25s ease-out;
+}
+@keyframes fcFlipIn {
+    from { transform: rotateY(90deg); opacity: .3; }
+    to   { transform: rotateY(0);      opacity: 1; }
+}
+@media (min-width: 769px) {
+    #cardMode { max-width: 720px; margin: 0 auto; }
+}

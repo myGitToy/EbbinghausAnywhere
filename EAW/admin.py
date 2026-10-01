@@ -8,7 +8,7 @@ from decimal import Decimal
 from .models import (
     Category, Item, ReviewDay,
     UserPoints, PointHistory, UserPointsConfig, PointRedemption, UserStreak,
-    ModelPricing, DeepSeekUsageLog
+    ModelPricing, DeepSeekUsageLog, UserProfile
 )
 from .forms import CategoryAdminForm, ItemAdminForm, ReviewDayAdminForm
 from django.core.exceptions import ValidationError
@@ -477,3 +477,19 @@ admin.site.register(ModelPricing, ModelPricingAdmin)
 admin.site.register(DeepSeekUsageLog, DeepSeekUsageLogAdmin)
 
 
+
+
+# ==================== 联邦账号绑定 Admin（#80） ====================
+
+class UserProfileAdmin(admin.ModelAdmin):
+    """study-hub 门户身份 ↔ 本地账号绑定表。
+
+    常规绑定由 /sso/bind/ 证明式流程自动完成；此处供极端情况手工兜底
+    （如用户遗失门户账号、需要人工改绑/解绑）。
+    """
+    list_display = ('user', 'study_hub_user_id', 'bound_at')
+    search_fields = ('user__username', 'study_hub_user_id')
+    raw_id_fields = ('user',)
+
+
+admin.site.register(UserProfile, UserProfileAdmin)

@@ -1,0 +1,52 @@
+{% extends "base_generic.html" %}
+{% block title %}<title>账号绑定 - Ebbinghaus Anywhere</title>{% endblock %}
+{% block content %}
+<div class="container" style="max-width: 560px;">
+    <div class="card p-4 mt-5 shadow-sm">
+        <h2 class="mb-3">绑定门户账号</h2>
+        <p>门户账号 <strong>{{ username }}</strong> 与本站已有的同名账号撞名了。</p>
+        <p class="text-muted">
+            为保护账号安全，本站不会自动合并同名账号。请用本地账号密码证明归属并完成绑定，
+            或换一个用户名新建账号（两种方式都能记住你现在的学习数据归属）。
+        </p>
+
+        {% if messages %}
+            <div class="alert alert-danger">
+                {% for message in messages %}
+                    <p class="mb-0">{{ message }}</p>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <form method="post" class="mb-4">
+            {% csrf_token %}
+            <input type="hidden" name="t" value="{{ ticket }}">
+            <input type="hidden" name="mode" value="bind">
+            <h5><span class="badge bg-primary me-1">方式一</span>绑定本地账号</h5>
+            <div class="mb-3">
+                <input type="password" name="password" class="form-control"
+                       placeholder="本地账号「{{ username }}」的密码" required autocomplete="current-password">
+            </div>
+            <button type="submit" class="btn btn-primary">验证密码并绑定</button>
+        </form>
+
+        <hr>
+
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="t" value="{{ ticket }}">
+            <input type="hidden" name="mode" value="rename">
+            <h5><span class="badge bg-secondary me-1">方式二</span>换个用户名新建</h5>
+            <div class="mb-3">
+                <input type="text" name="new_username" class="form-control"
+                       placeholder="新用户名（字母、数字、@/./+/-/_）" required autocomplete="off">
+            </div>
+            <button type="submit" class="btn btn-outline-primary">新建账号</button>
+        </form>
+
+        <p class="text-center mt-4 mb-0">
+            <a href="{% url 'login' %}" class="text-decoration-none">返回登录</a>
+        </p>
+    </div>
+</div>
+{% endblock %}

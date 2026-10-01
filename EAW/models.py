@@ -713,3 +713,25 @@ class UserStreak(models.Model):
             return config.streak_reward_points
 
         return 0
+
+
+class UserProfile(models.Model):
+    """联邦账号链接（study-hub #510 证明式绑定语义）。
+
+    study-hub 门户 userId ↔ 本地账号的一对一绑定表：SSO 到达时已绑定则直登，
+    同名未绑定走绑定页证明归属，绝不按用户名自动合并（防同名接管）。
+    """
+
+    user = models.OneToOneField(
+        User, on_delete=models.CASCADE, related_name='hub_profile', verbose_name='本地账号')
+    study_hub_user_id = models.CharField(
+        '门户用户 ID', max_length=64, unique=True,
+        help_text='study-hub 账号中心的 userId（全局稳定，门户改名不断链）')
+    bound_at = models.DateTimeField('绑定时间', auto_now_add=True)
+
+    class Meta:
+        verbose_name = '联邦账号绑定'
+        verbose_name_plural = '联邦账号绑定'
+
+    def __str__(self):
+        return f'{self.user.username} ← hub:{self.study_hub_user_id}'

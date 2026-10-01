@@ -1,5 +1,5 @@
 # study-hub 门户 OTT 桥接核心（Phase 5.3；ADR-0003 协议）。
-# 视图在 views.py（sso_bridge / sso_logout）；本模块纯函数便于单测。
+# 视图在 views.py（sso_bridge / sso_bind / sso_logout）；本模块纯函数便于单测。
 
 import os
 
@@ -48,3 +48,40 @@ def consume_ott(ott):
             or not isinstance(data.get('username'), str)):
         return None, 'invalid'
     return data, None
+
+
+# ---------- 同名冲突绑定票（#510 证明式绑定；Django 签名令牌等价 airlinesim 的 purpose JWT）----------
+
+from django.core import signing
+
+SSO_BIND_PURPOSE = 'sso-bind'
+# 冲突页人工输入的窗口期（秒），与 airlinesim 绑定票同宽
+SSO_BIND_TICKET_TTL = 600
+
+
+def sign_bind_ticket(hub_user_id, username):
+    """签发 10 分钟绑定票（不落库；salt 即 purpose，区别于其他签名用途）。"""
+    signer = signing.TimestampSigner(salt=SSO_BIND_PURPOSE)
+    return signer.sign_object({'userId': hub_user_id, 'username': username})
+
+
+def load_bind_ticket(token):
+    """校验绑定票。
+
+    返回 (payload, reason)：成功 payload 为 {'userId', 'username'}、reason 为 None；
+    失败 reason ∈ invalid / expired。
+    """
+    if not isinstance(token, str) or not token:
+        return None, 'invalid'
+    signer = signing.TimestampSigner(salt=SSO_BIND_PURPOSE)
+    try:
+        payload = signer.unsign_object(token, max_age=SSO_BIND_TICKET_TTL)
+    except signing.SignatureExpired:
+        return None, 'expired'
+    except signing.BadSignature:
+        return None, 'invalid'
+    if (not isinstance(payload, dict)
+            or not isinstance(payload.get('userId'), str)
+            or not isinstance(payload.get('username'), str)):
+        return None, 'invalid'
+    return payload, None

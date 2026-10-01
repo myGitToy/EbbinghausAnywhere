@@ -279,7 +279,10 @@
 
             // 重新绑定动态内容中的事件
             bindReviewDayEvents();  // 确保绑定按钮事件
-            
+
+            // 初始化翻转卡模式（#82）
+            initFlashcards();
+
             // 更新TTS图标和绑定TTS偏好选择器
             window.updateTTSMethodIcons();
             const ttsSelect = document.getElementById('tts-method-select');
@@ -309,6 +312,350 @@
         });
 
         return false; // 阻止默认表单提交
+    }
+
+    // ==================== 翻转卡模式（#82：一次一卡、键盘/手势判定、正面自动发音） ====================
+
+    // 积分奖励 toast（原 review_day.html 行内脚本定义，但该脚本在 AJAX 注入下从不执行——搬到真正运行的 review_home）
+    function showPointsRewardToast(pointsEarned, currentPoints, currentStreak) {
+        const toastContainer = document.createElement('div');
+        toastContainer.className = 'position-fixed top-0 end-0 p-3';
+        toastContainer.style.zIndex = '9999';
+        toastContainer.id = 'points-reward-toast';
+        toastContainer.innerHTML = `
+            <div class="toast show" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="toast-header bg-success text-white">
+                    <i class="fa fa-star me-2"></i>
+                    <strong class="me-auto">积分奖励</strong>
+                    <button type="button" class="btn-close btn-close-white" aria-label="Close"></button>
+                </div>
+                <div class="toast-body">
+                    <div class="mb-2">
+                        <i class="fa fa-check-circle text-success"></i>
+                        <strong>恭喜！获得 ${pointsEarned} 积分</strong>
+                    </div>
+                    <div class="small text-muted">
+                        当前积分：<strong>${currentPoints}</strong>
+                        ${currentStreak !== undefined ? `<br>连续学习：<strong>${currentStreak}</strong> 天` : ''}
+                    </div>
+                    <div class="mt-2">
+                        <a href="/points/market/" class="btn btn-sm btn-primary">
+                            <i class="fa fa-shopping-cart"></i> 前往积分商城
+                        </a>
+                    </div>
+                </div>
+            </div>`;
+        document.body.appendChild(toastContainer);
+        const closeBtn = toastContainer.querySelector('.btn-close');
+        if (closeBtn) closeBtn.addEventListener('click', () => toastContainer.remove());
+        setTimeout(() => { if (document.getElementById('points-reward-toast')) toastContainer.remove(); }, 5000);
+    }
+
+    const FC = {
+        items: [],
+        pos: -1,          // 当前卡片在 items 中的下标
+        answered: new Set(),
+        flipped: false,
+        swipeConsumed: false
+    };
+
+    function fcAutoplayPref() {
+        return localStorage.getItem('flashcard_autoplay') !== '0';
+    }
+
+    // 静默自动发音：不走 playAudioWithAccent（其失败会 alert），自动播失败直接吞掉（iOS 首次触摸前必被拦截）
+    function fcAutoplay(word) {
+        if (!fcAutoplayPref()) return;
+        try {
+            const audio = new Audio('https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=en-US&q=' + encodeURIComponent(word));
+            audio.play().catch(function() {});
+        } catch (e) { /* 静默 */ }
+    }
+
+    function fcCurrent() {
+        return (FC.pos >= 0 && FC.pos < FC.items.length) ? FC.items[FC.pos] : null;
+    }
+
+    function fcUnansweredCount() {
+        return FC.items.filter(it => !it.reviewed_today && !FC.answered.has(it.id)).length;
+    }
+
+    function fcApplyMode(mode) {
+        localStorage.setItem('review_mode', mode);
+        const cardMode = document.getElementById('cardMode');
+        const listMode = document.getElementById('listMode');
+        if (!cardMode || !listMode) return;
+        cardMode.classList.toggle('d-none', mode !== 'card');
+        listMode.classList.toggle('d-none', mode === 'card');
+        const cBtn = document.getElementById('modeCardBtn');
+        const lBtn = document.getElementById('modeListBtn');
+        if (cBtn && lBtn) {
+            cBtn.classList.toggle('active', mode === 'card');
+            lBtn.classList.toggle('active', mode !== 'card');
+        }
+    }
+
+    function fcToggleMode(preferred) {
+        const current = localStorage.getItem('review_mode') ||
+            (window.matchMedia('(max-width: 768px)').matches ? 'card' : 'list');
+        fcApplyMode(preferred || (current === 'card' ? 'list' : 'card'));
+    }
+
+    function fcUpdateProgress() {
+        const total = FC.items.length;
+        const preReviewed = FC.items.filter(it => it.reviewed_today).length;
+        const done = preReviewed + FC.answered.size;
+        const bar = document.getElementById('fcProgressBar');
+        const text = document.getElementById('fcProgressText');
+        if (bar) bar.style.width = (total ? Math.round(done / total * 100) : 0) + '%';
+        if (text) text.textContent = done + ' / ' + total;
+    }
+
+    function fcRender() {
+        const item = fcCurrent();
+        const stage = document.getElementById('fcStage');
+        const actions = document.getElementById('fcActions');
+        const done = document.getElementById('fcDone');
+        if (!item) {
+            // 本页全部完成
+            if (stage) stage.classList.add('d-none');
+            if (actions) actions.classList.add('d-none');
+            if (done) done.classList.remove('d-none');
+            fcUpdateProgress();
+            return;
+        }
+        if (stage) stage.classList.remove('d-none');
+        if (actions) actions.classList.remove('d-none');
+        if (done) done.classList.add('d-none');
+        FC.flipped = false;
+        const front = document.getElementById('fcFaceFront');
+        const back = document.getElementById('fcFaceBack');
+        front.classList.remove('d-none');
+        back.classList.add('d-none');
+
+        const card = document.getElementById('flashcard');
+        card.classList.toggle('fc-extra', item.is_extra);
+        card.disabled = false;
+
+        document.getElementById('fcWord').textContent = item.word;
+        document.getElementById('fcCategory').textContent = item.category;
+        const phonetics = [];
+        if (item.us_phonetic) phonetics.push('美 [' + item.us_phonetic + ']');
+        if (item.uk_phonetic) phonetics.push('英 [' + item.uk_phonetic + ']');
+        document.getElementById('fcPhonetics').textContent = phonetics.join('　');
+
+        const tts = document.getElementById('fcTtsButtons');
+        tts.innerHTML = '';
+        [['us', '美'], ['uk', '英']].forEach(([accent, label]) => {
+            if (item[(accent === 'us' ? 'us_phonetic' : 'uk_phonetic')]) {
+                const b = document.createElement('button');
+                b.className = 'btn btn-sm btn-outline-primary me-1';
+                b.innerHTML = '<i class="fa fa-volume-up"></i> ' + label;
+                b.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    window.playAudioWithAccent(item.word, accent);
+                });
+                tts.appendChild(b);
+            }
+        });
+
+        document.getElementById('fcContent').innerHTML = item.content;
+        document.getElementById('fcMeta').innerHTML =
+            '<span><i class="fa fa-refresh"></i> ' + item.cycle_label + '</span>' +
+            '<span><i class="fa fa-calendar"></i> 录入 ' + (item.input_date || '-') + '</span>' +
+            (item.next_after_yes ? '<span><i class="fa fa-arrow-right"></i> 认识后下次 ' + item.next_after_yes + '</span>' : '');
+
+        // 翻面后重排公式（内容含 MathJax/LaTeX，#82）
+        if (window.MathJax && window.MathJax.typesetPromise) {
+            window.MathJax.typesetPromise([back]).catch(function() {});
+        } else if (window.MathJax) {
+            try { window.MathJax.typeset([back]); } catch (e) {}
+        }
+
+        // 正面自动播一次发音（偏好可关）
+        fcAutoplay(item.word);
+
+        const disable = item.reviewed_today;
+        document.getElementById('fcYesBtn').disabled = disable;
+        document.getElementById('fcNoBtn').disabled = disable;
+        fcUpdateProgress();
+    }
+
+    function fcNext() {
+        const items = FC.items;
+        for (let i = FC.pos + 1; i < items.length; i++) {
+            if (!items[i].reviewed_today && !FC.answered.has(items[i].id)) { FC.pos = i; fcRender(); return; }
+        }
+        for (let i = 0; i < items.length; i++) {
+            if (!items[i].reviewed_today && !FC.answered.has(items[i].id)) { FC.pos = i; fcRender(); return; }
+        }
+        FC.pos = -1;
+        fcRender(); // 全部完成 → done 状态
+    }
+
+    function fcFlip() {
+        const item = fcCurrent();
+        if (!item) return;
+        FC.flipped = !FC.flipped;
+        const front = document.getElementById('fcFaceFront');
+        const back = document.getElementById('fcFaceBack');
+        front.classList.toggle('d-none', FC.flipped);
+        back.classList.toggle('d-none', !FC.flipped);
+        if (FC.flipped) {
+            const incoming = back;
+            incoming.classList.remove('fc-flip-in');
+            void incoming.offsetWidth; // 重启动画
+            incoming.classList.add('fc-flip-in');
+            if (window.MathJax && window.MathJax.typesetPromise) {
+                window.MathJax.typesetPromise([incoming]).catch(function() {});
+            }
+        }
+    }
+
+    function fcAnswer(action) {
+        const item = fcCurrent();
+        if (!item || item.reviewed_today || FC.answered.has(item.id)) return;
+        const currentReviewDate = document.getElementById("id_review_date").value;
+        fetch(`/review-feedback/${action}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ id: item.id, date: currentReviewDate })
+        })
+        .then(r => r.json())
+        .then(response => {
+            if (!response.success) {
+                alert("操作失败：" + response.message);
+                return;
+            }
+            FC.answered.add(item.id);
+            // 同步清单模式的表格行
+            const row = document.getElementById('td' + item.id);
+            if (row) {
+                row.setAttribute('data-reviewed-today', '1');
+                if (typeof updateRowStyle === 'function') {
+                    updateRowStyle(row, action, response.mastery);
+                }
+            }
+            if (typeof response.points_earned !== 'undefined' && response.points_earned > 0
+                    && typeof showPointsRewardToast === 'function') {
+                showPointsRewardToast(response.points_earned, response.current_points, response.current_streak);
+            }
+            fcNext();
+        })
+        .catch(err => console.error('flashcard answer error:', err));
+    }
+
+    function fcReset() {
+        const item = fcCurrent();
+        if (!item) return;
+        if (!confirm('确认要重新开始「' + item.word + '」的复习周期吗？这将清除该词的全部学习记录。')) return;
+        const currentReviewDate = document.getElementById("id_review_date").value;
+        fetch('/review-feedback/reset/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ id: item.id, date: currentReviewDate })
+        })
+        .then(r => r.json())
+        .then(response => {
+            if (response.success) {
+                // 与清单模式一致：RESET 后重载本日内容
+                loadReviewContent();
+            } else {
+                alert("重置失败：" + response.message);
+            }
+        })
+        .catch(err => console.error('flashcard reset error:', err));
+    }
+
+    function initFlashcards() {
+        const jsonEl = document.getElementById('cardItemsJson');
+        const cardMode = document.getElementById('cardMode');
+        if (!jsonEl || !cardMode) return;
+
+        try { FC.items = JSON.parse(jsonEl.textContent); } catch (e) { FC.items = []; }
+        FC.pos = -1;
+        FC.answered = new Set();
+
+        // 默认模式：移动端卡片，桌面清单（定稿）；选择记忆在 localStorage
+        const savedMode = localStorage.getItem('review_mode') ||
+            (window.matchMedia('(max-width: 768px)').matches ? 'card' : 'list');
+        fcApplyMode(savedMode);
+
+        // 从第一个未复习的卡开始（已点评的跳过）
+        fcNext();
+
+        // 自动发音开关
+        const autoSwitch = document.getElementById('flashcardAutoplaySwitch');
+        if (autoSwitch) {
+            autoSwitch.checked = fcAutoplayPref();
+            autoSwitch.addEventListener('change', function() {
+                localStorage.setItem('flashcard_autoplay', this.checked ? '1' : '0');
+            });
+        }
+
+        // 模式切换按钮
+        const cBtn = document.getElementById('modeCardBtn');
+        const lBtn = document.getElementById('modeListBtn');
+        if (cBtn) cBtn.onclick = () => fcApplyMode('card');
+        if (lBtn) lBtn.onclick = () => fcApplyMode('list');
+
+        // 翻面 / 判定 / 重置
+        const card = document.getElementById('flashcard');
+        if (card) {
+            card.addEventListener('click', function() {
+                if (FC.swipeConsumed) { FC.swipeConsumed = false; return; }
+                fcFlip();
+            });
+            // 移动端滑动手势：右滑认识 / 左滑不认识；屏幕左右 30px 边缘豁免给系统返回手势
+            card.addEventListener('touchstart', function(e) {
+                FC.touchStartX = e.changedTouches[0].clientX;
+                FC.touchStartY = e.changedTouches[0].clientY;
+            }, { passive: true });
+            card.addEventListener('touchend', function(e) {
+                if (FC.touchStartX === undefined) return;
+                const dx = e.changedTouches[0].clientX - FC.touchStartX;
+                const dy = e.changedTouches[0].clientY - FC.touchStartY;
+                FC.touchStartX = undefined;
+                const w = window.innerWidth;
+                const start = e.changedTouches[0].clientX - dx; // 起点
+                if (start < 30 || start > w - 30) return;       // 边缘豁免
+                if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy)) return;
+                FC.swipeConsumed = true;
+                fcAnswer(dx > 0 ? 'yes' : 'no');
+            }, { passive: true });
+        }
+        const yesBtn = document.getElementById('fcYesBtn');
+        const noBtn = document.getElementById('fcNoBtn');
+        const resetBtn = document.getElementById('fcResetBtn');
+        if (yesBtn) yesBtn.onclick = () => fcAnswer('yes');
+        if (noBtn) noBtn.onclick = () => fcAnswer('no');
+        if (resetBtn) resetBtn.onclick = fcReset;
+        const reloadBtn = document.getElementById('fcReloadBtn');
+        if (reloadBtn) reloadBtn.onclick = () => loadReviewContent();
+
+        // 键盘快捷键（页面级只绑一次）
+        if (!window.__fcKeysBound) {
+            window.__fcKeysBound = true;
+            document.addEventListener('keydown', function(e) {
+                const mode = localStorage.getItem('review_mode') ||
+                    (window.matchMedia('(max-width: 768px)').matches ? 'card' : 'list');
+                if (mode !== 'card') return;
+                const tag = (e.target.tagName || '').toUpperCase();
+                if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+                if (document.querySelector('.modal.show')) return; // 清单 modal 打开时不抢按键
+                if (!document.getElementById('cardMode') || document.getElementById('cardMode').classList.contains('d-none')) return;
+                if (e.key === ' ') { e.preventDefault(); fcFlip(); }
+                else if (e.key === 'ArrowRight') { e.preventDefault(); fcAnswer('yes'); }
+                else if (e.key === 'ArrowLeft') { e.preventDefault(); fcAnswer('no'); }
+                else if (e.key === 'r' || e.key === 'R') { fcReset(); }
+            });
+        }
     }
 
     // 绑定 review_day.html 中的事件

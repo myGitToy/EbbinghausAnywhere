@@ -372,14 +372,15 @@
     modalBody.innerHTML = `
       <div class="text-center py-3">
         <div class="spinner-border text-primary" role="status">
-          <span class="sr-only">加载中...</span>
+          <span class="visually-hidden">加载中...</span>
         </div>
       </div>
     `;
 
-    // 显示模态框
-    if (typeof $ !== 'undefined' && $.fn.modal) {
-      $('#calendarDayModal').modal('show');
+    // 显示模态框（#81：原 jQuery BS4 调用在无 jQuery 页面上是死分支，弹窗永不出现）
+    const calendarModalEl = document.getElementById('calendarDayModal');
+    if (calendarModalEl && window.bootstrap) {
+      bootstrap.Modal.getOrCreateInstance(calendarModalEl).show();
     }
 
     // 获取当天复习项目

@@ -179,12 +179,26 @@
         // 确保在页面加载后输出当前日期
         console.log("当前日期为：", today); // 控制台日志确认
 
+        // URL 带 ?date= 时直达该日期（/review/<date>/ 直链 302 回本页，#81）
+        const urlParams = new URLSearchParams(window.location.search);
+        const initialDate = urlParams.get('date') || today;
+        const initialPerPage = urlParams.get('per_page');
+
         // 初始化 Flatpickr
         flatpickr("#id_review_date", {
             dateFormat: "Y-m-d",      // 设置日期格式
-            defaultDate: today        // 将当天日期设置为默认值
+            defaultDate: initialDate  // 当天或 URL 指定日期
         });
-        
+
+        if (initialPerPage && document.querySelector(`#per_page option[value="${initialPerPage}"]`)) {
+            document.getElementById('per_page').value = initialPerPage;
+        }
+
+        // URL 带日期参数时自动加载该日复习内容
+        if (urlParams.get('date')) {
+            loadReviewContent();
+        }
+
         // 为checkbox添加change事件监听器
         document.getElementById('show_mastered').addEventListener('change', function() {
             const reviewDate = document.getElementById('id_review_date').value;

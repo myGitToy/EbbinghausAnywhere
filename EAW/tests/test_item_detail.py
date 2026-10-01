@@ -66,9 +66,10 @@ class ItemDetailScheduleTest(TestCase):
         self.assertEqual(len(self.item.unfamiliar_history), 1)
 
         # 到下一次（正式）复习日期，检查该条目仍在复习列表且 unfamiliar_count 保留
+        # （#81 起非 AJAX 直链 302 回复习首页，取数据走 AJAX 片段路径）
         next_date = date.today() + timedelta(days=1)
         url_review = reverse('review-view', args=[next_date.year, next_date.month, next_date.day])
-        resp = self.client.get(url_review)
+        resp = self.client.get(url_review, headers={'x-requested-with': 'XMLHttpRequest'})
         self.assertEqual(resp.status_code, 200)
         page_list = resp.context['page_obj'].object_list
         found = [r for r in page_list if r['item'].id == self.item.id]

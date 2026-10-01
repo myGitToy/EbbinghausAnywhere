@@ -73,16 +73,15 @@ window.addEventListener('message', function(event) {
         <div class="row">
             <div class="col-12">
                 <div class="card shadow">
-                    <div class="card-body">
-                        <div class="ratio ratio-16x9">
-                            <iframe
-                                src="{% static 'gobang/index.html' %}"
-                                frameborder="0"
-                                allowfullscreen
-                                style="width: 100%; height: 80vh; border: none;">
-                            </iframe>
-                        </div>
-                    </div>
+                <div class="card-body">
+                    <!-- #81：去掉 .ratio 包裹（内联 height 与 ratio 高宽比互相覆盖导致溢出），直接定高 -->
+                    <iframe
+                        src="{% static 'gobang/index.html' %}"
+                        frameborder="0"
+                        allowfullscreen
+                        style="width: 100%; height: min(80vh, 720px); border: none; display: block;">
+                    </iframe>
+                </div>
                 </div>
             </div>
         </div>

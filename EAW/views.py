@@ -8,7 +8,7 @@ from django.utils.timezone import now
 from django import forms
 from .forms import InputForm,  CustomUserCreationForm, EmailUpdateForm, UpdateNameForm, CustomPasswordChangeForm, DeepSeekConfigForm
 from decimal import Decimal
-from .billing import get_cost_summary, get_pricing_table
+from .billing import AI_QUERY_COST_POINTS, ai_query_balance, charge_ai_query, get_cost_summary, get_pricing_table
 from django.utils.decorators import method_decorator
 from django.views.generic.detail import DetailView
 from django.contrib.auth.decorators import permission_required
@@ -1773,18 +1773,30 @@ def deepseek_config_view(request):
 
 @login_required
 def deepseek_query_view(request):
-    """DeepSeek 查询页面"""
+    """DeepSeek 查询页面（#197 起按次计 1 积分：预检门槛 + 成功后扣费）"""
     if request.method == 'GET':
-        return render(request, 'deepseek_query.html')
-    
+        return render(request, 'deepseek_query.html', {
+            'balance': ai_query_balance(request.user),
+            'query_cost': AI_QUERY_COST_POINTS,
+        })
+
     elif request.method == 'POST':
         try:
             data = json.loads(request.body)
             word = data.get('word', '').strip()
-            
+
             if not word:
                 return JsonResponse({'success': False, 'error': '请输入单词'})
-            
+
+            # #197 积分门槛预检：余额不足直接拒绝，不产生任何 API 调用
+            if ai_query_balance(request.user) < AI_QUERY_COST_POINTS:
+                return JsonResponse({
+                    'success': False,
+                    'error': '积分不足，完成复习打卡可赚积分',
+                    'insufficient_points': True,
+                    'balance': ai_query_balance(request.user),
+                })
+
             # 调用 DeepSeek API
             result = call_deepseek_api(word, user=request.user)
 
@@ -1795,6 +1807,17 @@ def deepseek_query_view(request):
             usage_info = result.get('_usage')
             if usage_info is not None:
                 result = {k: v for k, v in result.items() if k != '_usage'}
+
+            # #197 查询成功 → 扣 1 积分（API 失败不扣；SSO 影子号本期统一本地计费，#198 后分流代扣）
+            usage_log_id = str(usage_info.get('id')) if usage_info else None
+            charged, charge_reason = charge_ai_query(request.user, reference_id=usage_log_id)
+            if not charged:
+                return JsonResponse({
+                    'success': False,
+                    'error': charge_reason,
+                    'insufficient_points': True,
+                    'balance': ai_query_balance(request.user),
+                })
 
             # 解析结果
             uk_phonetic = result.get('phonetic', [])[0] if result.get('phonetic') else ''
@@ -1836,11 +1859,12 @@ def deepseek_query_view(request):
                 }
             }
 
-            # 本次调用费用与峰/闲档位（指南§7：消费明细加峰闲标记）
+            # 本次调用费用与峰/闲档位（指南§7：消费明细加峰闲标记）；内部流水 id 不下发
             if usage_info:
                 usage_info['band_display'] = '高峰' if usage_info['band'] == 'peak' else '空闲'
                 usage_info['cost_display'] = f"{Decimal(usage_info['cost']).quantize(Decimal('0.0001')):f}"
-                response_data['usage'] = usage_info
+                response_data['usage'] = {k: v for k, v in usage_info.items() if k != 'id'}
+            response_data['balance'] = ai_query_balance(request.user)  # #197：扣费后余额即时回显
 
             return JsonResponse(response_data)
             

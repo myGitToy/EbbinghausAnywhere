@@ -14,7 +14,7 @@ from decimal import Decimal
 from django.contrib.auth.models import User
 from django.db.models import Sum
 
-from .models import DeepSeekUsageLog, ModelPricing
+from .models import DeepSeekUsageLog, ModelPricing, UserPoints
 from .pricing import (
     BAND_PEAK,
     PriceTier,
@@ -204,3 +204,42 @@ def get_cost_summary(now: datetime | None = None) -> dict:
     except Exception:
         logger.exception("统计 DeepSeek 费用汇总失败")
         return empty
+
+
+# ---------- DeepSeek 单词查询积分门槛（#197 先行修复：零门槛资损缺口） ----------
+
+AI_QUERY_COST_POINTS = 1  # 按次固定 1 积分（本地整数账户无货币语义；复习打卡 1 次 ≈ 查询 1 次）
+
+
+def ai_query_balance(user: User) -> int:
+    """用户当前可用积分（无账户 = 0）。never-raises 契约。"""
+    try:
+        account = UserPoints.objects.filter(user=user).first()
+        return account.current_points if account else 0
+    except Exception:
+        logger.exception("查询积分余额失败: user=%s", user)
+        return 0
+
+
+def charge_ai_query(user: User, reference_id: str | None = None) -> tuple[bool, str | None]:
+    """DeepSeek 查询扣费单一接缝（#197 先行）：本期所有用户（含 SSO 影子号）统一本地积分，1 分/次。
+
+    调用方契约：预检（ai_query_balance ≥ 1，不足则不发起 API 调用）→ API 调用 → 成功后调用本函数扣费；
+    API 失败不调本函数 = 不扣。PointHistory reason=「DeepSeek 单词查询」，reference_id 关联 DeepSeekUsageLog.id。
+
+    #198 积分联邦化落地后：hub_profile.study_hub_user_id 非空用户在此分流为门户代扣，本地用户维持本机制。
+
+    返回 (ok, reason)：reason 非空 = 拒绝扣费（余额不足等），调用方据此拒绝返回查询结果。
+    """
+    try:
+        account = UserPoints.objects.filter(user=user).first()
+        if account is None or account.current_points < AI_QUERY_COST_POINTS:
+            return False, "积分不足，完成复习打卡可赚积分"
+        account.spend_points(AI_QUERY_COST_POINTS, reason="DeepSeek 单词查询", reference_id=reference_id)
+        return True, None
+    except ValueError:
+        # 并发窗口下余额被花掉：spend_points 抛 Insufficient points——按拒绝处理（宁可少答一次不漏扣）
+        return False, "积分不足，完成复习打卡可赚积分"
+    except Exception:
+        logger.exception("DeepSeek 查询扣费失败: user=%s", user)
+        return False, "积分扣减失败，请稍后重试"

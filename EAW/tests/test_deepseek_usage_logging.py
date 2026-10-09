@@ -12,7 +12,7 @@ from unittest.mock import MagicMock, patch
 from django.contrib.auth.models import User
 from django.test import TestCase
 
-from EAW.models import DeepSeekUsageLog
+from EAW.models import DeepSeekUsageLog, UserPoints
 from EAW.pricing import BAND_PEAK, SHANGHAI
 
 CONTENT = '{"uk_phonetic":"/a/","us_phonetic":"/a/","meaning":"test","example_sentences":[]}'
@@ -105,6 +105,7 @@ class TestUsageMeteringInCallDeepSeekApi(TestCase):
 class TestQueryViewUsageExposure(TestCase):
     def test_usage_exposed_in_json_and_not_leaked_into_data(self):
         user = User.objects.create_user(username="viewer", password="pass")
+        UserPoints.objects.create(user=user, current_points=10)  # #197：查询按次计分，本类只测 usage 暴露面
         self.client.force_login(user)
 
         fake_result = {
@@ -138,6 +139,7 @@ class TestQueryViewUsageExposure(TestCase):
 
     def test_response_without_usage_has_no_usage_field(self):
         user = User.objects.create_user(username="viewer2", password="pass")
+        UserPoints.objects.create(user=user, current_points=10)  # #197：同上
         self.client.force_login(user)
 
         fake_result = {

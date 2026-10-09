@@ -116,6 +116,7 @@ def call_deepseek_api(word, config=None, user=None):
                 )
                 if usage_log is not None:
                     usage_info = {
+                        "id": usage_log.id,  # #197：PointHistory.reference_id 关联本次用量流水（响应侧剥离）
                         "band": usage_log.band,
                         "cost": str(usage_log.cost),
                         "prompt_tokens": usage_log.prompt_tokens,

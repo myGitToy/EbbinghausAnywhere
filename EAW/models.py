@@ -236,10 +236,27 @@ class DeepSeekUsageLog(models.Model):
 
     只写不改、不清理（永久保留）。band 记录计费时刻的真实时段；
     单价快照记录实付单价——即使峰时价未配置回退闲价，历史账单也可解释。
+    #198 联邦代扣：billing_party 标记费用承担方，deduct_status 跟踪门户上报状态。
     """
     BAND_PEAK = "peak"
     BAND_OFFPEAK = "offpeak"
     BANDS = ((BAND_PEAK, "高峰"), (BAND_OFFPEAK, "空闲"))
+
+    BILLING_PARTY_LOCAL = "local"
+    BILLING_PARTY_STUDY_HUB = "study_hub"
+    BILLING_PARTIES = (
+        (BILLING_PARTY_LOCAL, "本地积分"),
+        (BILLING_PARTY_STUDY_HUB, "门户积分代扣"),
+    )
+
+    DEDUCT_PENDING = "pending"
+    DEDUCT_OK = "ok"
+    DEDUCT_FAILED = "failed"
+    DEDUCT_STATUSES = (
+        (DEDUCT_PENDING, "待上报/待人工兜底"),
+        (DEDUCT_OK, "门户已扣"),
+        (DEDUCT_FAILED, "上报被拒（人工兜底）"),
+    )
 
     user = models.ForeignKey(
         User, null=True, blank=True, on_delete=models.SET_NULL,
@@ -275,6 +292,19 @@ class DeepSeekUsageLog(models.Model):
     cost = models.DecimalField(
         max_digits=14, decimal_places=10,
         help_text="费用（元）；4 位价格 × 整数 tokens ÷ 1e6 恰好 10 位小数精确"
+    )
+    # ---- #198 联邦积分代扣 ----
+    billing_party = models.CharField(
+        max_length=20, choices=BILLING_PARTIES, default=BILLING_PARTY_LOCAL,
+        help_text="本次消费承担方：本地积分 / 门户积分代扣（SSO 绑定用户，存量行默认 local）",
+    )
+    remote_ledger_id = models.BigIntegerField(
+        null=True, blank=True,
+        help_text="门户侧流水 id 回写（PointsLedgerId，免扣时为 UsageLedgerId）——人工兜底对账锚点",
+    )
+    deduct_status = models.CharField(
+        max_length=10, choices=DEDUCT_STATUSES, default=DEDUCT_OK,
+        help_text="门户上报状态：local 行恒 ok；study_hub 行 pending → ok/failed",
     )
     billed_at = models.DateTimeField(help_text="计费时刻（响应完成时刻，北京时间 aware）")
     created_at = models.DateTimeField(auto_now_add=True)

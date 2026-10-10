@@ -39,12 +39,20 @@
                             <i class="fa fa-info-circle"></i>
                             提示：输入单词后点击查询按钮，使用 DeepSeek AI 获取释义
                         </div>
-                        <!-- #197 积分门槛：按次扣费展示 -->
+                        <!-- #197 积分门槛：按次扣费展示；#198 联邦用户展示门户积分余额（按实际用量代扣） -->
+                        {% if portal_balance %}
+                        <div class="form-text" id="points-line">
+                            <i class="fa fa-coins text-warning"></i>
+                            门户积分余额：<strong id="points-balance">{% if balance is not None %}{{ balance }}{% else %}暂不可达{% endif %}</strong>
+                            （按实际 token 用量从门户积分代扣；在门户「用量」页可查明细）
+                        </div>
+                        {% else %}
                         <div class="form-text" id="points-line">
                             <i class="fa fa-coins text-warning"></i>
                             当前积分：<strong id="points-balance">{{ balance|default:0 }}</strong>
                             （每次查询消耗 {{ query_cost|default:1 }} 积分；完成复习打卡可赚积分）
                         </div>
+                        {% endif %}
                     </div>
 
                     <!-- TTS 偏好设置 -->
@@ -631,7 +639,12 @@ function queryWord(word) {
             currentData = data.data;
             displayResult(word, data.data, data.usage);
         } else if (data.insufficient_points) {
-            alert('积分不足，暂时无法查询（当前 ' + (data.balance ?? 0) + ' 积分）。完成复习打卡可赚积分，再来查询～');
+            // #198：联邦用户的门户侧文案由服务端下发，本地用户保持原文案
+            alert(data.portal
+                ? (data.error || '门户积分不足，请到 study-hub 门户领取每周配额后重试')
+                : '积分不足，暂时无法查询（当前 ' + (data.balance ?? 0) + ' 积分）。完成复习打卡可赚积分，再来查询～');
+        } else if (data.portal) {
+            alert('查询失败: ' + (data.error || '门户暂时不可达，请稍后重试'));
         } else {
             alert('查询失败: ' + (data.error || '未知错误'));
         }

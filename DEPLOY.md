@@ -69,7 +69,10 @@ docker-compose -f docker-compose.prod.yml restart web
 - **端口**：宿主机 **8095** → 容器 8000（原规划 8000 已被 HMU 后端占用）；
   - `deploy/local_settings.py` 覆盖 `CSRF_TRUSTED_ORIGINS`（8095 各 origin + 门户 8092）——绑定页表单 POST 需要；
   - study-hub 侧 `FederatedApp.ewa` 的 entryUrl/bridgeUrl 已同步改为 `http://192.168.1.155:8095/sso/bridge/`；
-- **`deploy/.env`**：`SECRET_KEY`（随机）、`STUDY_HUB_URL=http://192.168.1.155:8090`、`STUDY_HUB_APP_SECRET`（= study-hub `data/FEDERATED-APPS.txt` 登记值）、`ALLOWED_HOSTS=192.168.1.155,localhost,127.0.0.1`（DEBUG 默认 False）。
+- **`deploy/.env`**：`SECRET_KEY`（随机）、`STUDY_HUB_APP_SECRET`（= study-hub `data/FEDERATED-APPS.txt` 登记值）、`ALLOWED_HOSTS=192.168.1.155,localhost,127.0.0.1`（DEBUG 默认 False）。
+- **`STUDY_HUB_URL`（SSO 桥，#198 起）**：study-hub auth/api 自 #64 起只绑回环 127.0.0.1，容器（bridge 网络）直连 `192.168.1.155:8090` 会 Connection refused。经门户 web（0.0.0.0:8092，局域网唯一入口）反代可达：**`STUDY_HUB_URL=http://192.168.1.155:8092/auth-center`**（hub-web 有 `/auth-center/:path*` → auth `/:path*` 的 rewrite，桥代码拼 `/api/ott/consume`）。
+- **`STUDY_HUB_POINTS_URL`（积分代扣客户端，#198）**：联邦扣费端点基址，默认 `http://127.0.0.1:8091/api`（同机直连 hub-api）。生产容器同样经门户反代：**`http://192.168.1.155:8092/hub-api`**（hub-web `/hub-api/:path*` → hub-api `/api/:path*`）。客户端拼 `/federated-points/{precheck|deduct}`；凭证复用 `STUDY_HUB_APP_SECRET`。
+  - 未配置 secret 或门户不可达 = SSO 用户查询被拒（fail-closed，#198 Q1）；本地（未绑定 SSO）用户完全不受影响。
 
 ### 换机重建步骤（镜像不推 Docker Hub，本地构建）
 

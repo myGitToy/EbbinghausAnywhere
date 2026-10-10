@@ -8,7 +8,16 @@ from django.utils.timezone import localdate, now
 from django import forms
 from .forms import InputForm,  CustomUserCreationForm, EmailUpdateForm, UpdateNameForm, CustomPasswordChangeForm, DeepSeekConfigForm
 from decimal import Decimal
-from .billing import AI_QUERY_COST_POINTS, ai_query_balance, charge_ai_query, get_cost_summary, get_pricing_table
+from .billing import (
+    AI_QUERY_COST_POINTS,
+    ai_query_balance,
+    charge_ai_query,
+    get_cost_summary,
+    get_pricing_table,
+    precheck_ai_query,
+    query_balance_view,
+    settle_federated_ai_query,
+)
 from django.utils.decorators import method_decorator
 from django.views.generic.detail import DetailView
 from django.contrib.auth.decorators import permission_required
@@ -1773,10 +1782,13 @@ def deepseek_config_view(request):
 
 @login_required
 def deepseek_query_view(request):
-    """DeepSeek 查询页面（#197 起按次计 1 积分：预检门槛 + 成功后扣费）"""
+    """DeepSeek 查询页面（#197 预检门槛 + 成功后扣费；#198 起按 SSO 绑定分流计费）"""
     if request.method == 'GET':
+        # #198：联邦用户展示门户积分余额（预检接口查询；不可达显示「暂不可达」）；本地用户原样
+        balance_view = query_balance_view(request.user)
         return render(request, 'deepseek_query.html', {
-            'balance': ai_query_balance(request.user),
+            'balance': balance_view['balance'],
+            'portal_balance': balance_view['portal'],
             'query_cost': AI_QUERY_COST_POINTS,
         })
 
@@ -1788,14 +1800,18 @@ def deepseek_query_view(request):
             if not word:
                 return JsonResponse({'success': False, 'error': '请输入单词'})
 
-            # #197 积分门槛预检：余额不足直接拒绝，不产生任何 API 调用
-            if ai_query_balance(request.user) < AI_QUERY_COST_POINTS:
-                return JsonResponse({
+            # #197/#198 余额门槛预检（联邦用户 fail-closed：门户不可达一律拒绝）：不产生任何 API 调用
+            precheck_ok, precheck_reason, balance_view = precheck_ai_query(request.user)
+            if not precheck_ok:
+                payload = {
                     'success': False,
-                    'error': '积分不足，完成复习打卡可赚积分',
-                    'insufficient_points': True,
-                    'balance': ai_query_balance(request.user),
-                })
+                    'error': precheck_reason,
+                    'insufficient_points': '积分不足' in precheck_reason,
+                    'balance': balance_view['balance'],
+                }
+                if balance_view['portal']:
+                    payload['portal'] = True
+                return JsonResponse(payload)
 
             # 调用 DeepSeek API
             result = call_deepseek_api(word, user=request.user)
@@ -1808,16 +1824,25 @@ def deepseek_query_view(request):
             if usage_info is not None:
                 result = {k: v for k, v in result.items() if k != '_usage'}
 
-            # #197 查询成功 → 扣 1 积分（API 失败不扣；SSO 影子号本期统一本地计费，#198 后分流代扣）
-            usage_log_id = str(usage_info.get('id')) if usage_info else None
-            charged, charge_reason = charge_ai_query(request.user, reference_id=usage_log_id)
-            if not charged:
-                return JsonResponse({
-                    'success': False,
-                    'error': charge_reason,
-                    'insufficient_points': True,
-                    'balance': ai_query_balance(request.user),
-                })
+            # #198 计费分流：SSO 绑定用户 → 门户代扣上报（结果照常交付，上报失败 pending/failed 人工兜底）；
+            # 本地用户 → 原 #197 语义零变化（API 失败不扣；扣费拒绝不返回结果）
+            usage_log_id = usage_info.get('id') if usage_info else None
+            if balance_view['portal']:
+                reported, report_reason, reported_balance = settle_federated_ai_query(request.user, usage_log_id)
+                if report_reason:
+                    logger.warning("门户代扣未确认（结果照常交付）: user=%s log=%s reason=%s",
+                                   request.user, usage_log_id, report_reason)
+                balance = reported_balance['balance'] if reported_balance else balance_view['balance']
+            else:
+                charged, charge_reason = charge_ai_query(request.user, reference_id=str(usage_log_id) if usage_log_id else None)
+                if not charged:
+                    return JsonResponse({
+                        'success': False,
+                        'error': charge_reason,
+                        'insufficient_points': True,
+                        'balance': ai_query_balance(request.user),
+                    })
+                balance = ai_query_balance(request.user)
 
             # 解析结果
             uk_phonetic = result.get('phonetic', [])[0] if result.get('phonetic') else ''
@@ -1864,7 +1889,10 @@ def deepseek_query_view(request):
                 usage_info['band_display'] = '高峰' if usage_info['band'] == 'peak' else '空闲'
                 usage_info['cost_display'] = f"{Decimal(usage_info['cost']).quantize(Decimal('0.0001')):f}"
                 response_data['usage'] = {k: v for k, v in usage_info.items() if k != 'id'}
-            response_data['balance'] = ai_query_balance(request.user)  # #197：扣费后余额即时回显
+            # #197/#198：扣费后余额即时回显（联邦用户为门户扣后余额，上报失败时为预检值或 None）
+            response_data['balance'] = balance
+            if balance_view['portal']:
+                response_data['portal'] = True
 
             return JsonResponse(response_data)
             

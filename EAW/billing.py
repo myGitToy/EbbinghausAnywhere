@@ -14,7 +14,7 @@ from decimal import Decimal
 from django.contrib.auth.models import User
 from django.db.models import Sum
 
-from .models import DeepSeekUsageLog, ModelPricing, UserPoints
+from .models import DeepSeekUsageLog, ModelPricing, UserProfile, UserPoints
 from .pricing import (
     BAND_PEAK,
     PriceTier,
@@ -103,6 +103,7 @@ def record_usage(
         band, tier = resolve_tier(offpeak, peak, now)
         cost = calculate_cost(prompt_tokens, cached_tokens, output_tokens, tier)
 
+        billing_party = _billing_party_for(user)
         return DeepSeekUsageLog.objects.create(
             user=user,
             model=normalize_model_name(model),
@@ -115,6 +116,13 @@ def record_usage(
             billed_output_price=tier.output_price,
             cost=cost,
             billed_at=now or datetime.now(SHANGHAI),
+            billing_party=billing_party,
+            # local 行扣费即时完成恒 ok；study_hub 行上报后才置 ok/failed（#198）
+            deduct_status=(
+                DeepSeekUsageLog.DEDUCT_PENDING
+                if billing_party == DeepSeekUsageLog.BILLING_PARTY_STUDY_HUB
+                else DeepSeekUsageLog.DEDUCT_OK
+            ),
         )
     except Exception:
         logger.exception("记录 DeepSeek 用量流水失败: model=%r", model)
@@ -206,6 +214,21 @@ def get_cost_summary(now: datetime | None = None) -> dict:
         return empty
 
 
+
+
+def query_balance_view(user: User) -> dict:
+    """GET 查询页展示用余额视图（never-raises）：联邦用户实时查门户，失败置 balance=None。"""
+    hub_id = hub_user_id_of(user)
+    if hub_id is None:
+        return {"portal": False, "balance": ai_query_balance(user)}
+    from .federated import precheck_balance
+
+    data, _reason = precheck_balance(hub_id)
+    if data is None:
+        return {"portal": True, "balance": None}
+    return {"portal": True, "balance": data.get("balanceCents")}
+
+
 # ---------- DeepSeek 单词查询积分门槛（#197 先行修复：零门槛资损缺口） ----------
 
 AI_QUERY_COST_POINTS = 1  # 按次固定 1 积分（本地整数账户无货币语义；复习打卡 1 次 ≈ 查询 1 次）
@@ -243,3 +266,95 @@ def charge_ai_query(user: User, reference_id: str | None = None) -> tuple[bool, 
     except Exception:
         logger.exception("DeepSeek 查询扣费失败: user=%s", user)
         return False, "积分扣减失败，请稍后重试"
+
+
+# ---------- DeepSeek 查询计费分流（#198 积分联邦化：SSO 绑定用户切门户代扣） ----------
+
+FEDERATED_UNAVAILABLE_MESSAGE = "门户暂时不可达，请稍后重试"
+FEDERATED_INSUFFICIENT_MESSAGE = "门户积分不足，请到 study-hub 门户领取每周配额或找家长充值"
+
+
+def hub_user_id_of(user: User) -> str | None:
+    """SSO 绑定的门户 userId（未绑定/查询失败 → None）。never-raises 契约。"""
+    if user is None or not getattr(user, "pk", None):
+        return None
+    try:
+        profile = UserProfile.objects.filter(user=user).only("study_hub_user_id").first()
+        if profile is None:
+            return None
+        return profile.study_hub_user_id or None
+    except Exception:
+        logger.exception("查询 SSO 绑定失败: user=%s", user)
+        return None
+
+
+def _billing_party_for(user: User | None) -> str:
+    """用量流水承担方：SSO 绑定用户 → 门户代扣；其余（本地用户/后台无主调用）→ local。"""
+    return (
+        DeepSeekUsageLog.BILLING_PARTY_STUDY_HUB
+        if hub_user_id_of(user) is not None
+        else DeepSeekUsageLog.BILLING_PARTY_LOCAL
+    )
+
+
+def precheck_ai_query(user: User) -> tuple[bool, str | None, dict]:
+    """查询前余额门槛统一接缝（#198 分流；调用方据此决定是否发起 API 调用）。
+
+    - 联邦用户（study_hub_user_id 非空）：门户预检，reason 非空一律拒绝（fail-closed，Q1）
+    - 本地用户：本地余额 ≥ AI_QUERY_COST_POINTS（#197 原语义零变化）
+    返回 (ok, reason, balance_view)；balance_view = {'portal': bool, 'balance': int|None}，
+    balance 为 None 表示门户余额暂不可知（视图侧展示「暂不可达」）。
+    """
+    hub_id = hub_user_id_of(user)
+    if hub_id is None:
+        balance = ai_query_balance(user)
+        if balance < AI_QUERY_COST_POINTS:
+            return False, "积分不足，完成复习打卡可赚积分", {"portal": False, "balance": balance}
+        return True, None, {"portal": False, "balance": balance}
+
+    from .federated import precheck_balance  # 局部导入避免环（federated 不 import billing）
+
+    data, reason = precheck_balance(hub_id)
+    if reason is not None:
+        return False, FEDERATED_UNAVAILABLE_MESSAGE, {"portal": True, "balance": None}
+    balance_cents = data.get("balanceCents")
+    if not data.get("canSpend"):
+        return False, FEDERATED_INSUFFICIENT_MESSAGE, {"portal": True, "balance": balance_cents}
+    return True, None, {"portal": True, "balance": balance_cents}
+
+
+def settle_federated_ai_query(user: User, usage_log_id: int | None) -> tuple[bool, str | None, dict | None]:
+    """联邦用户查询成功后的门户代扣上报（查询结果已产生，本函数不再拒绝交付）。
+
+    - 上报成功 → 流水标 ok + 回写门户流水 id（人工兜底对账锚点）
+    - 明确拒绝（密钥/未配价，重试无意义）→ 标 failed 记日志人工兜底
+    - 网络失败 → 保持 pending 记日志人工兜底（不自动无限重试）
+    返回 (reported, reason, balance_view)；balance_view 仅上报成功时带回门户扣后余额。
+    """
+    try:
+        log = DeepSeekUsageLog.objects.filter(id=usage_log_id).first() if usage_log_id else None
+        if log is None:
+            logger.warning("门户代扣跳过：本次调用无用量流水（计费埋点失败）user=%s", user)
+            return False, "用量流水缺失，门户代扣跳过", None
+        hub_id = hub_user_id_of(user)
+        if hub_id is None:
+            return False, "用户未绑定门户，跳过代扣", None
+
+        from .federated import report_deduction
+
+        data, reason = report_deduction(hub_id, log)
+        if reason is None:
+            log.deduct_status = DeepSeekUsageLog.DEDUCT_OK
+            log.remote_ledger_id = data.get("pointsLedgerId") or data.get("usageLedgerId")
+            log.save(update_fields=["deduct_status", "remote_ledger_id"])
+            return True, None, {"portal": True, "balance": data.get("balanceAfter")}
+        if reason in ("rejected", "invalid"):
+            log.deduct_status = DeepSeekUsageLog.DEDUCT_FAILED
+            log.save(update_fields=["deduct_status"])
+            logger.error("门户代扣被拒绝（人工兜底）: log=%s reason=%s user=%s", log.id, reason, user)
+        else:
+            logger.error("门户代扣上报失败，流水保持 pending（人工兜底）: log=%s reason=%s user=%s", log.id, reason, user)
+        return False, FEDERATED_UNAVAILABLE_MESSAGE, None
+    except Exception:
+        logger.exception("门户代扣上报异常（不影响查询结果交付）: user=%s log=%s", user, usage_log_id)
+        return False, FEDERATED_UNAVAILABLE_MESSAGE, None

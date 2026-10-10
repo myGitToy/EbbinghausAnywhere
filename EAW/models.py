@@ -676,7 +676,7 @@ class UserStreak(models.Model):
         if self.current_streak > 0 and self.current_streak % config.streak_reward_days == 0:
             # 检查今天是否已经给过奖励
             from django.utils import timezone
-            today = timezone.now().date()
+            today = timezone.localdate()
 
             if self.last_streak_reward_date:
                 # 如果上次奖励日期就是今天，不再奖励
@@ -698,7 +698,7 @@ class UserStreak(models.Model):
         # 自动推进到奖励天数并给予奖励
         if self.current_streak == config.streak_reward_days - 1:
             from django.utils import timezone
-            today = timezone.now().date()
+            today = timezone.localdate()
 
             # 推进到奖励天数
             self.current_streak = config.streak_reward_days

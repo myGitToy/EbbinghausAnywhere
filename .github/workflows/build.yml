@@ -28,7 +28,21 @@ jobs:
         run: |
           # 如果有测试命令，请在此处替换
           echo "Running tests..."
-          
+
+      - name: Date semantics check (#287)
+        run: |
+          # 日期语义防线：「今天/每日」一律 localdate()（上海本地日，见 docs/开发约定.md）。
+          # now().date()/timezone.now().date() 是 UTC 日期、date.today() 随进程 TZ 漂移——
+          # 与 created_at__date（本地时区口径）配对时在上海 0-8 点错位一天，曾致签到/streak 可刷分（#197/#287）。
+          # 测试代码豁免（冻结时刻回归需要 mock 这类写法）。
+          HITS=$(grep -rnE 'now\(\)\.date\(\)|timezone\.now\(\)\.date\(\)|\bdate\.today\(\)' EAW/ --include='*.py' | grep -v '/tests/' | grep -v '__pycache__' || true)
+          if [ -n "$HITS" ]; then
+            echo "ERROR: 禁用的日期取法（用 localdate()，约定见 docs/开发约定.md）："
+            echo "$HITS"
+            exit 1
+          fi
+          echo "OK: 非测试代码无禁用日期取法"
+
       - name: Check Docker secrets (only on main push)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |

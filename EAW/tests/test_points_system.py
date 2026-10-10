@@ -610,3 +610,78 @@ class CheckinTimezoneWindowTest(TestCase):
 
             second = self.client.post('/points/checkin/', content_type='application/json')
             self.assertFalse(second.json()['success'], '同一天（本地日）第二次签到必须被拒——修复前此处会成功（刷分漏洞）')
+
+
+class StreakRewardTimezoneWindowTest(TestCase):
+    """streak 奖励凌晨窗口回归（#287）：UTC 日期与上海本地日错开（上海 0-8 点）时，
+    奖励语义必须按本地日。冻结 UTC 2026-10-10 18:30（= 上海 10-11 02:30）确定性复现。"""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='streakuser', password='testpass123')
+        self.config = UserPointsConfig.objects.create(
+            user=self.user,
+            streak_reward_enabled=True,
+            streak_reward_days=7,
+            streak_reward_points=20,
+        )
+
+    def _freeze(self):
+        """上下文管理器：冻结 django 时钟到 UTC/本地日错位窗口"""
+        import datetime as dt
+        from unittest.mock import patch
+        fake = dt.datetime(2026, 10, 10, 18, 30, tzinfo=dt.timezone.utc)
+        return patch('django.utils.timezone.now', return_value=fake)
+
+    def test_reward_due_after_local_week_is_granted(self):
+        """上次奖励恰为 7 个本地日前：窗口内必须发奖（修复前 UTC 日期滞后一天误判「未满周期」漏发）"""
+        import datetime as dt
+        streak = UserStreak.objects.create(user=self.user, current_streak=7, last_streak_reward_date=dt.date(2026, 10, 4))
+        with self._freeze():
+            reward = streak.check_streak_reward(self.config)
+        self.assertEqual(reward, 20)
+        streak.refresh_from_db()
+        self.assertEqual(streak.last_streak_reward_date, dt.date(2026, 10, 11))
+
+    def test_auto_advance_writes_local_dates(self):
+        """6→7 自动推进：写入的 last_streak_reward_date / last_study_date 必须是上海本地日（修复前写 UTC 日期）"""
+        import datetime as dt
+        streak = UserStreak.objects.create(user=self.user, current_streak=6, longest_streak=0)
+        with self._freeze():
+            reward = streak.check_streak_reward(self.config)
+        self.assertEqual(reward, 20)
+        streak.refresh_from_db()
+        self.assertEqual(streak.current_streak, 7)
+        self.assertEqual(streak.last_streak_reward_date, dt.date(2026, 10, 11))
+        self.assertEqual(streak.last_study_date, dt.date(2026, 10, 11))
+
+
+class ReviewPointsTimezoneWindowTest(TestCase):
+    """复习赚积分防重凌晨窗口回归（#287，views 复习奖励块）：同一上海日同一单词只能得 1 次积分。
+    修复前防重查 UTC 日期而流水按本地日落库——凌晨窗口第二次复习会重复 +1。"""
+
+    def setUp(self):
+        import datetime as dt
+        self.user = User.objects.create_user(username='revuser', password='testpass123')
+        self.account = UserPoints.objects.create(user=self.user, current_points=0)
+        self.client.login(username='revuser', password='testpass123')
+        self.item = Item.objects.create(
+            user=self.user, item='apple',
+            inputDate=dt.date(2026, 10, 1), initDate=dt.date(2026, 10, 1),
+        )
+
+    def test_same_local_day_review_awards_once(self):
+        import json
+        from unittest.mock import patch
+        import datetime as dt
+        fake = dt.datetime(2026, 10, 10, 18, 30, tzinfo=dt.timezone.utc)  # 上海 10-11 02:30
+        with patch('django.utils.timezone.now', return_value=fake), \
+             patch('EAW.views.now', return_value=fake):
+            for _ in range(2):
+                resp = self.client.post(
+                    '/review-feedback/yes/',
+                    data=json.dumps({'id': self.item.id, 'date': '2026-10-11'}),
+                    content_type='application/json',
+                )
+                self.assertTrue(resp.json()['success'])
+        self.account.refresh_from_db()
+        self.assertEqual(self.account.current_points, 1, '同一上海日同一单词第二次复习不得重复加分（修复前得 2）')

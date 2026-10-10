@@ -207,7 +207,7 @@ def home(request):
         total_items = items.count()
         if total_items > 0:
             first_item_date = items.order_by('inputDate').first().inputDate
-            days_since_first_item = (now().date() - first_item_date).days
+            days_since_first_item = (localdate() - first_item_date).days
         else:
             days_since_first_item = 0
         
@@ -501,19 +501,19 @@ class ItemDetailView(DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         item = context.get('object')
-        from datetime import date, timedelta
+        from datetime import timedelta
 
         # 与其他地方保持一致的间隔定义
         intervals = [0, 1, 2, 4, 7, 15, 30, 90, 180]
 
         # 基准日期：优先使用 initDate，否则使用 inputDate，若都无则使用今天
-        base_date = item.initDate or item.inputDate or date.today()
+        base_date = item.initDate or item.inputDate or localdate()
 
         # unfamiliar_history 可能为 None
         uh = item.unfamiliar_history or []
 
         schedule = []
-        today = date.today()
+        today = localdate()
         # 计算当前的索引（如果 current_interval 存的是天数）
         try:
             current_index = intervals.index(item.current_interval) if item.current_interval is not None else None
@@ -1180,7 +1180,7 @@ def ReviewFeedbackYes(request):
                 )
 
                 # 检查今天是否已经对该单词获得过积分
-                today = timezone.now().date()
+                today = localdate()
                 already_earned_today = PointHistory.objects.filter(
                     user=request.user,
                     reference_id=f"review_{curword.id}",
@@ -1606,10 +1606,10 @@ def import_items_from_excel(request):
                     content = ""  # 如果 content 为 None，赋空字符串
 
                 input_date_index = column_index.get("Input Date")
-                input_date = row[input_date_index] if input_date_index is not None else now().date()
+                input_date = row[input_date_index] if input_date_index is not None else localdate()
 
                 init_date_index = column_index.get("Init Date")
-                init_date = row[init_date_index] if init_date_index is not None else now().date()
+                init_date = row[init_date_index] if init_date_index is not None else localdate()
 
                 # 处理 Proficiency 字段
                 proficiency_name = row[column_index.get("Proficiency", None)] or "Unfamiliar"
@@ -1928,7 +1928,7 @@ def deepseek_save_view(request):
             content = '\n'.join(content_parts)
             
             # 获取今天的日期
-            today = now().date()
+            today = localdate()
             
             # 创建 Item
             item = Item.objects.create(
@@ -2145,7 +2145,7 @@ def daily_checkin_view(request):
 
     try:
         user = request.user
-        # 上海本地日（修复 #197 基线暴露的窗口 bug）：原 now().date() 取 UTC 日期，
+        # 上海本地日（修复 #197 基线暴露的窗口 bug）：原写法取 UTC 时间再落日期，
         # 而 created_at__date 过滤按本地时区取日期——上海 0-8 点两者错开一天，
         # 「今天是否已签到」恒判空，凌晨可无限重复签到刷积分
         today = localdate()

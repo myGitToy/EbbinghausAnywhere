@@ -4,7 +4,7 @@ from django.views import generic
 from django.db.models import Avg, Max, Min, Count, Sum
 from datetime import datetime
 from datetime import timedelta
-from django.utils.timezone import now
+from django.utils.timezone import localdate, now
 from django import forms
 from .forms import InputForm,  CustomUserCreationForm, EmailUpdateForm, UpdateNameForm, CustomPasswordChangeForm, DeepSeekConfigForm
 from decimal import Decimal
@@ -2008,8 +2008,8 @@ def points_market_view(request):
     config, _ = UserPointsConfig.objects.get_or_create(user=user)
     streak, _ = UserStreak.objects.get_or_create(user=user)
 
-    # 检查今天是否已签到
-    today = now().date()
+    # 检查今天是否已签到（上海本地日，同签到执行视图的窗口 bug 修复）
+    today = localdate()
     has_checkin_today = PointHistory.objects.filter(
         user=user,
         reason__startswith='每日签到',
@@ -2145,7 +2145,10 @@ def daily_checkin_view(request):
 
     try:
         user = request.user
-        today = now().date()
+        # 上海本地日（修复 #197 基线暴露的窗口 bug）：原 now().date() 取 UTC 日期，
+        # 而 created_at__date 过滤按本地时区取日期——上海 0-8 点两者错开一天，
+        # 「今天是否已签到」恒判空，凌晨可无限重复签到刷积分
+        today = localdate()
 
         # 检查今天是否已签到
         existing = PointHistory.objects.filter(

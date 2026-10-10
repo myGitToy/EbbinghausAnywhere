@@ -585,3 +585,28 @@ if __name__ == '__main__':
     TestRunner = get_runner(settings)
     test_runner = TestRunner()
     failures = test_runner.run_tests(["__main__"])
+
+
+class CheckinTimezoneWindowTest(TestCase):
+    """凌晨窗口回归（#197 基线暴露）：上海 0-8 点 = UTC 前日 16-24 点，UTC 日期与本地日期错开一天。
+    修复前「今天是否已签到」恒判空 → 凌晨可无限重复签到刷积分；测试在 2:30 跑必挂、白天跑必过（假绿）。"""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='windowuser', password='testpass123')
+        self.client.login(username='windowuser', password='testpass123')
+        UserPointsConfig.objects.create(user=self.user)
+
+    def test_double_checkin_rejected_in_utc_local_mismatch_window(self):
+        """UTC 18:30（= 上海次日 02:30）：首次签到成功，同日本地日再签必须拒绝——任意墙钟时刻确定性复现"""
+        import datetime as dt
+        from unittest.mock import patch
+
+        # UTC 2026-10-10 18:30 = 上海 2026-10-11 02:30：UTC 日期(10-10) ≠ 本地日期(10-11)
+        fake_now = dt.datetime(2026, 10, 10, 18, 30, tzinfo=dt.timezone.utc)
+        with patch('EAW.views.now', return_value=fake_now), \
+             patch('django.utils.timezone.now', return_value=fake_now):
+            first = self.client.post('/points/checkin/', content_type='application/json')
+            self.assertTrue(first.json()['success'])
+
+            second = self.client.post('/points/checkin/', content_type='application/json')
+            self.assertFalse(second.json()['success'], '同一天（本地日）第二次签到必须被拒——修复前此处会成功（刷分漏洞）')
